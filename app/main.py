@@ -2,11 +2,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.api import router as api_router
-
-from app.core.config import settings
-from app.db.session import get_session, engine
 from sqlmodel import text
+
+from app.api.api import router as api_router
+from app.db.session import engine
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,6 +20,7 @@ async def lifespan(app: FastAPI):
     yield
 
     print("Shutting down application")
+
 
 app = FastAPI(title="Vee E-Commerce API", version="0.1.0", lifespan=lifespan)
 

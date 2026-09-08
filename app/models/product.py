@@ -27,12 +27,11 @@ class Product(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
 
     product_name: str = Field(index=True, unique=True)
-    description: str | None = None
+    description: str | None = Field(default=None)
     price: Decimal = Field(sa_column=Column(Numeric(6, 2)))
     stock_quantity: int = Field()
-    image_url: str | None = None
+    image_url: str | None = Field(default=None)
     created_at: datetime = Field(
-        default=None,
         sa_column=Column(
             DateTime(timezone=True),
             server_default=text("NOW()"),

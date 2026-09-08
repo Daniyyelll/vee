@@ -25,7 +25,7 @@ class Notification(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
 
     # Destination
-    recepient_email: str = Field(index=True)
+    recipient_email: str = Field(index=True)
 
     title: str = Field()
     content: str = Field()
@@ -33,7 +33,6 @@ class Notification(SQLModel, table=True):
     notification_type: NotificationType = Field(default=NotificationType.ORDER_PLACED)
 
     created_at: datetime = Field(
-        default=None,
         sa_column=Column(
             DateTime(timezone=True),
             server_default=text("NOW()"),

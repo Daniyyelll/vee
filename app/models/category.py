@@ -12,7 +12,7 @@ class Category(SQLModel, table=True):
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     category_name: str = Field(index=True, unique=True)
-    description: str = Field()
+    description: str | None = Field(default=None)
 
     # One-to-many relationship
     products: list["Product"] = Relationship(

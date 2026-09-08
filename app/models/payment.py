@@ -38,7 +38,7 @@ class Payment(SQLModel, table=True):
     currency: Currency = Field(default=Currency.EGP)
     payment_status: PaymentStatus = Field(default=PaymentStatus.PENDING)
 
-    provider_transaction_id: str = Field(default=None)
+    provider_transaction_id: str = Field()
 
     payment_method: PaymentMethod = Field(default=PaymentMethod.CASH)
 
@@ -47,7 +47,6 @@ class Payment(SQLModel, table=True):
     order: "Order" = Relationship(back_populates="payment")
 
     created_at: datetime = Field(
-        default=None,
         sa_column=Column(
             DateTime(timezone=True),
             server_default=text("NOW()"),

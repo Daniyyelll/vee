@@ -10,7 +10,6 @@ class ResetCode(SQLModel, table=True):
     email: str
     code: str
     created_at: datetime = Field(
-        default=None,
         sa_column=Column(
             DateTime(timezone=True),
             server_default=text("NOW()"),

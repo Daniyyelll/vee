@@ -21,7 +21,6 @@ class Review(SQLModel, table=True):
     username: None = Field(default=None)
 
     created_at: datetime = Field(
-        default=None,
         sa_column=Column(
             DateTime(timezone=True),
             server_default=text("NOW()"),

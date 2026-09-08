@@ -23,7 +23,7 @@ class User(SQLModel, table=True):
     __tablename__ = "user"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    username: str = Field(unique=True)
+    name: str = Field(unique=True)
     email: str = Field(index=True, unique=True)
     hashed_password: str = Field()
     profile_picture: str | None = Field(default=None)
@@ -32,7 +32,6 @@ class User(SQLModel, table=True):
     role: UserRole = Field(default=UserRole.CUSTOMER)
     active: bool = Field(default=True)
     created_at: datetime = Field(
-        default=None,
         sa_column=Column(
             DateTime(timezone=True),
             server_default=text("NOW()"),
