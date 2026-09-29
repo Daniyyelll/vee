@@ -16,13 +16,16 @@ dependencies = [
     "httpx>=0.28.1",
     "jinja2>=3.1.6",
     "passlib[argon2]>=1.7.4",
+    "pillow>=11.1.0",
+    "pwdlib[argon2]>=0.3.1",
     "pydantic-settings>=2.15.0",
     "pyjwt>=2.13.0",
     "python-multipart>=0.0.32",
-    "sqlmodel>=0.0.42",
+    "ruff>=0.16.7",
     "stripe>=15.6.1",
     "uvicorn>=0.52.4",
 ]
+UV_PROJECT_ENVIRONMENT=".venv"
 
 [tool.ruff]
 line-length = 88
@@ -32,10 +35,18 @@ select = ["E", "F", "I"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
-known-first-party = ["my_project"]
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
 line-ending = "auto"
 docstring-code-format = true
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

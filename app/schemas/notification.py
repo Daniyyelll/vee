@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, EmailStr
 from pydantic.alias_generators import to_camel
 
-from app.models.notification import NotificationType
+from app.domain.enums import NotificationType
 
 
 class Notification(BaseModel):

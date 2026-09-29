@@ -6,14 +6,32 @@
   <component name="ChangeListManager">
     <list default="true" id="e36c8ac7-5fff-4da6-b164-f21cab3b6ffc" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/category.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/category.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/notification.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/notification.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/order.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/order.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/payment.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/payment.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/product.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/product.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/reset_code.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/reset_code.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/review.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/review.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/user.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/user.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/api.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/db/session.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/db/session.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/cart.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/cart_item.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/category.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/notification.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/order.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/order_item.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/payment.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/product.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/reset_code.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/review.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/user.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/cart.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/cart.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/category.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/category.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/notification.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/notification.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/order.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/order.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/product.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/product.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/review.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/review.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/user.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/user.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/uv.lock" beforeDir="false" afterPath="$PROJECT_DIR$/uv.lock" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -21,7 +39,14 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="38" />
+    <option name="cachedIndexableFilesCount" value="1693" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -32,62 +57,65 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="5.547468249637681E-58" />
-      <entry key="MS500" value="3.651726040541444E-12" />
-      <entry key="S2" value="0.0026589125094264748" />
-      <entry key="S5" value="0.23459339268738574" />
-      <entry key="S10" value="1.3989631578899946" />
-      <entry key="S30" value="6.051864606132567" />
-      <entry key="S60" value="9.163947858238897" />
-      <entry key="M2" value="12.34605518359863" />
-      <entry key="M5" value="24.715130916333266" />
-      <entry key="M10" value="46.71531814743161" />
-      <entry key="M15" value="66.33937384319847" />
-      <entry key="M30" value="116.95317486964888" />
-      <entry key="H1" value="205.22239650745018" />
-      <entry key="H2" value="391.102479345218" />
-      <entry key="H4" value="695.6511695670141" />
-      <entry key="D1" value="1347.2719525143698" />
-      <entry key="W1" value="1534.6085314056631" />
+      <entry key="MS100" value="1.0" />
+      <entry key="MS500" value="1.0003174674903033" />
+      <entry key="S2" value="1.2031003306800225" />
+      <entry key="S5" value="2.169467132727357" />
+      <entry key="S10" value="3.464437858405221" />
+      <entry key="S30" value="7.624515053080252" />
+      <entry key="S60" value="14.454795409748762" />
+      <entry key="M2" value="26.279857731669296" />
+      <entry key="M5" value="49.234700830375196" />
+      <entry key="M10" value="86.8556127608267" />
+      <entry key="M15" value="123.35780791994262" />
+      <entry key="M30" value="207.46479250367264" />
+      <entry key="H1" value="341.24417365401524" />
+      <entry key="H2" value="579.484194420722" />
+      <entry key="H4" value="978.2696965139874" />
+      <entry key="D1" value="3163.859994681863" />
+      <entry key="W1" value="4794.630453024794" />
     </decayedCancelled>
     <decayedSelected>
-      <entry key="MS100" value="1.0013248089135232" />
-      <entry key="MS500" value="1.265724098776855" />
-      <entry key="S2" value="1.738581794650362" />
-      <entry key="S5" value="2.095928989058981" />
-      <entry key="S10" value="2.4876978502894582" />
-      <entry key="S30" value="3.2012468756017083" />
-      <entry key="S60" value="3.546240083599656" />
-      <entry key="M2" value="3.840726013235104" />
-      <entry key="M5" value="4.530314372035873" />
-      <entry key="M10" value="5.924683316683364" />
-      <entry key="M15" value="7.412265338563146" />
-      <entry key="M30" value="11.820865301988096" />
-      <entry key="H1" value="21.060384658885155" />
-      <entry key="H2" value="44.13007000688427" />
-      <entry key="H4" value="85.18535481539794" />
-      <entry key="D1" value="177.7011443513212" />
-      <entry key="W1" value="204.9695732846581" />
+      <entry key="MS100" value="3.95952170188075E-65" />
+      <entry key="MS500" value="1.316826462919656E-13" />
+      <entry key="S2" value="6.02396079008545E-4" />
+      <entry key="S5" value="0.05151738610510905" />
+      <entry key="S10" value="0.22745267403337613" />
+      <entry key="S30" value="0.7719955028997303" />
+      <entry key="S60" value="1.7280724891465054" />
+      <entry key="M2" value="3.72957211881051" />
+      <entry key="M5" value="7.345042657382703" />
+      <entry key="M10" value="10.609286964193037" />
+      <entry key="M15" value="12.985243845487663" />
+      <entry key="M30" value="17.70247167560344" />
+      <entry key="H1" value="24.482944846807115" />
+      <entry key="H2" value="38.537667904435565" />
+      <entry key="H4" value="68.43926979583324" />
+      <entry key="D1" value="304.6412649304674" />
+      <entry key="W1" value="507.6918570431937" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.01845322520969112" />
-      <entry key="MS500" value="0.4963923791660546" />
-      <entry key="S2" value="1.3003246916679896" />
-      <entry key="S5" value="2.062409220734965" />
-      <entry key="S10" value="3.6523274897190885" />
-      <entry key="S30" value="9.062359450800553" />
-      <entry key="S60" value="12.579255667504116" />
-      <entry key="M2" value="16.1059520245301" />
-      <entry key="M5" value="29.198124579648237" />
-      <entry key="M10" value="52.60368671741298" />
-      <entry key="M15" value="73.71956771576079" />
-      <entry key="M30" value="128.74707877065407" />
-      <entry key="H1" value="226.25903974356825" />
-      <entry key="H2" value="435.20980521820604" />
-      <entry key="H4" value="780.8162999822313" />
-      <entry key="D1" value="1524.966579920947" />
-      <entry key="W1" value="1739.5770446730173" />
+      <entry key="MS100" value="0.7120250977985358" />
+      <entry key="MS500" value="0.934407213174093" />
+      <entry key="S2" value="1.1394819956029014" />
+      <entry key="S5" value="2.1057211581822273" />
+      <entry key="S10" value="3.558240481917445" />
+      <entry key="S30" value="8.267141157884492" />
+      <entry key="S60" value="16.050955226599303" />
+      <entry key="M2" value="29.882296945799276" />
+      <entry key="M5" value="56.48388780371179" />
+      <entry key="M10" value="97.38879284115514" />
+      <entry key="M15" value="136.27601997785365" />
+      <entry key="M30" value="225.11611368350202" />
+      <entry key="H1" value="365.68808822847075" />
+      <entry key="H2" value="617.9893241074341" />
+      <entry key="H4" value="1046.6804608217537" />
+      <entry key="D1" value="3468.4845609507115" />
+      <entry key="W1" value="5302.318672891678" />
     </decayedShown>
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 7,
@@ -95,6 +123,7 @@
 }</component>
   <component name="ProjectId" id="3IrfjaGghIMM6GOAOvfej9cFgxK" />
   <component name="ProjectViewState">
+    <option name="autoscrollToSource" value="true" />
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
@@ -109,15 +138,21 @@
     &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;main&quot;,
     &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/vee&quot;,
+    &quot;last_opened_file_path&quot;: &quot;//wsl.localhost/Ubuntu/home/linux_elite_user/projects/vee&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;run.code.analysis.last.selected.profile&quot;: &quot;pProject Default&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
     &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  },
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;postgresql&quot;
+    ]
   }
 }</component>
   <component name="SharedIndexes">
@@ -140,7 +175,27 @@
       <workItem from="1788545129002" duration="4172000" />
       <workItem from="1788690268884" duration="10617000" />
       <workItem from="1788780416406" duration="7215000" />
-      <workItem from="1788870494796" duration="15428000" />
+      <workItem from="1788870494796" duration="15639000" />
+      <workItem from="1788890115548" duration="21000" />
+      <workItem from="1788937196043" duration="2000" />
+      <workItem from="1788937369369" duration="1000" />
+      <workItem from="1788984794099" duration="6000" />
+      <workItem from="1789148686824" duration="8000" />
+      <workItem from="1789148985433" duration="2000" />
+      <workItem from="1789319901252" duration="776000" />
+      <workItem from="1789320922568" duration="12483000" />
+      <workItem from="1789342417015" duration="547000" />
+      <workItem from="1789425992852" duration="7621000" />
+      <workItem from="1789570001223" duration="4805000" />
+      <workItem from="1789591079847" duration="4070000" />
+      <workItem from="1789599955707" duration="9637000" />
+      <workItem from="1789750193073" duration="6849000" />
+      <workItem from="1789766537412" duration="17015000" />
+      <workItem from="1789864416813" duration="5029000" />
+      <workItem from="1789918912190" duration="11174000" />
+      <workItem from="1790534308166" duration="4453000" />
+      <workItem from="1790550573881" duration="15380000" />
+      <workItem from="1790639289720" duration="10108000" />
     </task>
     <servers />
   </component>
