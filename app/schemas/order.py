@@ -1,23 +1,36 @@
 from datetime import datetime
 from decimal import Decimal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from pydantic.alias_generators import to_camel
 
-from app.models.order import OrderStatus
+from app.domain.enums import OrderStatus
 
 from .user import UserRead
 
 
 class CheckoutRequest(BaseModel):
-    shipping_address: str
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        validate_by_name=True,
+        validate_by_alias=True,
+        str_strip_whitespace=True,
+        extra="forbid",
+    )
+
+    shipping_address: str = Field(min_length=1, max_length=1000)
 
 
 class UpdateOrderStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     status: OrderStatus
 
 
 class OrderItemRead(BaseModel):
+    id: UUID
+    product_id: UUID
     product_name: str
     quantity: int
     unit_price: Decimal
@@ -44,6 +57,7 @@ class OrderRead(BaseModel):
         from_attributes=True,
     )
 
+    id: UUID
     user: UserRead
     order_number: int
     total_price: Decimal

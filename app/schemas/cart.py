@@ -26,6 +26,10 @@ class AddToCartRequest(BaseModel):
     quantity: int = Field(default=1, gt=0)
 
 
+class UpdateCartItemRequest(BaseModel):
+    quantity: int = Field(gt=0)
+
+
 class CartRead(BaseModel):
     user_id: uuid.UUID
     items: list[CartItemRead] = Field(default_factory=list)
