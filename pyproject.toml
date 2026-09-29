@@ -22,7 +22,6 @@ dependencies = [
     "pyjwt>=2.13.0",
     "python-multipart>=0.0.32",
     "ruff>=0.16.7",
-    "stripe>=15.6.1",
     "uvicorn>=0.52.4",
 ]
 UV_PROJECT_ENVIRONMENT=".venv"

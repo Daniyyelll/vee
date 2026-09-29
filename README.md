@@ -53,12 +53,13 @@ Order status requests accept:
 Admin transitions are `pending -> processing -> shipped -> delivered`;
 `pending` and `processing` may also transition to `cancelled`. Customers may
 cancel only their own pending orders. Delivery staff may advance processing
-orders to shipped, then shipped orders to delivered. Completed and cancelled
+orders to shipped, then shipped orders to delivered after cash is recorded as
+collected. Completed and cancelled
 orders are terminal. Repeating the current status is idempotent within these
 role permissions. Invalid transitions return 409; forbidden actions return 403.
 Cancellation restores reserved stock exactly once and cancels pending payments.
-An order with a completed payment requires a recorded refund first; these routes
-do not process payments or issue refunds.
+An order with a completed payment requires a recorded refund first. Order
+routes do not collect or refund cash; use the staff payment endpoints below.
 
 Confirmation and status emails run as best-effort background tasks after the
 order transaction commits. SMTP errors are logged and cannot undo checkout.
@@ -111,6 +112,77 @@ currently has no currency field; analytics assume a single catalog currency.
 
 Public registration creates customer accounts only. Administrator and delivery
 accounts must be provisioned through a trusted administrative process.
+
+## Cash-on-delivery payments
+
+Cash payments require no external payment provider, API key, hosted checkout,
+or webhook. Checkout creates one pending cash payment in the same transaction
+as the order. The amount is the order total calculated by the server. Order
+responses include a `payment` resource; older orders without a payment return
+`payment=null` until staff explicitly initialize their cash payment.
+
+| Method | Endpoint | Access and behavior |
+| --- | --- | --- |
+| GET | `/api/payments/{order_number}` | Order owner, admin, or delivery staff |
+| POST | `/api/payments/{order_number}` | Admin/delivery; initialize a legacy cash payment |
+| POST | `/api/payments/{order_number}/collect` | Admin/delivery; record full cash collection |
+| POST | `/api/payments/{order_number}/refund` | Admin; record a full cash refund |
+
+These paths use the order number, not the payment UUID. Initialization and
+collection accept no payment fields; clients cannot choose the amount, currency,
+provider, or payment status. The store currency defaults to `EGP` and can be set
+with `PAYMENT_CURRENCY` (`EGP`, `SAR`, or `AED`). Each payment snapshots its
+currency. Keep one consistent catalog currency; changing the store currency
+requires a catalog/data plan because order-sales analytics do not group by
+currency.
+
+Initialize is an idempotent action for orders created before this integration.
+It derives the amount from the order total and rejects cancelled orders. It
+never overwrites an existing payment or infers historical cash collection.
+
+Collection is allowed when an order is shipped or already delivered. Staff must
+confirm that the full amount has actually been received, then call:
+
+```text
+POST /api/payments/123/collect
+```
+
+The payment changes from `pending` to `completed`, with `collectedAt` and
+`collectedBy`. Retrying returns the same receipt, retaining the original staff
+member and timestamp. Delivery cannot be recorded until the cash payment is
+completed. For normal delivery, record cash collection first, then advance the
+order to delivered. Customers can read their own payment but cannot record
+collection or refunds.
+
+For a cash refund, an admin must physically return the cash first, then record:
+
+```text
+POST /api/payments/123/refund
+```
+
+```json
+{"reason": "Returned item; full cash amount handed back to customer"}
+```
+
+Only a completed payment can become `refunded`. The record retains its
+collection audit and adds `refundedAt`, `refundedBy`, and `refundReason`.
+Repeating the same request is idempotent; a different second refund returns 409.
+Partial refunds are not supported. This endpoint records cash already returned;
+it does not transfer money, change order status, or restock inventory. Product
+returns/restocking remain a separate workflow. Refunded cash cannot be collected
+again through this payment record.
+
+Cancellation and payment actions lock the order before the payment. Cancellation
+marks pending payments cancelled, and cancelled payments cannot be collected.
+All writes run in a database transaction. A failure to create the payment rolls
+back checkout, including inventory changes and cart clearing.
+
+The cash migration enforces one positive-amount cash payment per order and adds
+audit fields. Duplicate records, missing/nonpositive amounts, or old non-cash
+transactions must be reconciled before upgrading; no financial history is
+silently deleted or relabelled. The provider reference column is now optional
+and retained only to preserve old references. Downgrading removes cash audit
+columns but keeps payment records and nullable provider references.
 
 ## Database upgrades and validation
 

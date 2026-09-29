@@ -7,6 +7,7 @@ from pydantic.alias_generators import to_camel
 
 from app.domain.enums import OrderStatus
 
+from .payment import PaymentRead
 from .user import UserRead
 
 
@@ -65,3 +66,5 @@ class OrderRead(BaseModel):
     shipping_address: str
     created_at: datetime
     items: list[OrderItemRead] = Field(default_factory=list)
+
+    payment: PaymentRead | None = None

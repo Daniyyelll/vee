@@ -47,7 +47,6 @@ class PaymentStatus(enum.StrEnum):
 
 class PaymentMethod(enum.StrEnum):
     CASH = "Cash"
-    INSTAPAY = "InstaPay"
 
 
 class ReportStatus(enum.StrEnum):

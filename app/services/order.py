@@ -11,6 +11,11 @@ from app.core.exceptions import APIException
 from app.domain.enums import OrderStatus, UserRole
 from app.schemas.order import CheckoutRequest, OrderRead
 from app.services.cart import _lock_cart
+from app.services.payment import (
+    PAYMENT_COLUMNS,
+    insert_cash_payment,
+    payment_to_schema,
+)
 from app.services.user import user_to_dict
 
 ORDER_COLUMNS = """
@@ -40,6 +45,17 @@ async def _read_orders(db: asyncpg.Connection, rows) -> list[OrderRead]:
         """,
         [row["id"] for row in rows],
     )
+    payments = await db.fetch(
+        f"""
+        SELECT {PAYMENT_COLUMNS} FROM payment p
+        JOIN "order" o ON o.id = p.order_id
+        WHERE p.order_id = ANY($1::uuid[])
+        """,
+        [row["id"] for row in rows],
+    )
+    payments_by_order = {
+        payment["order_id"]: payment_to_schema(payment) for payment in payments
+    }
     grouped = {}
     for item in items:
         grouped.setdefault(item["order_id"], []).append(dict(item))
@@ -49,6 +65,7 @@ async def _read_orders(db: asyncpg.Connection, rows) -> list[OrderRead]:
         data["status"] = OrderStatus(data["status"].lower())
         data["user"] = user_to_dict({**data, "id": data["user_id"]})
         data["items"] = grouped.get(data["id"], [])
+        data["payment"] = payments_by_order.get(data["id"])
         orders.append(OrderRead.model_validate(data))
     return orders
 
@@ -170,6 +187,7 @@ async def checkout(
             "UPDATE product SET stock_quantity = stock_quantity - $2 WHERE id = $1",
             [(item["product_id"], item["quantity"]) for item in items],
         )
+        await insert_cash_payment(db, order_id, total)
         await db.execute("DELETE FROM cart_item WHERE cart_id = $1", cart_id)
         result = await get_order(db, user, number)
     return result
@@ -218,6 +236,15 @@ async def update_order_status(
             raise APIException(
                 "Invalid order status transition.", status.HTTP_409_CONFLICT
             )
+        if new_status == OrderStatus.DELIVERED:
+            payment_status = await db.fetchval(
+                "SELECT payment_status::text FROM payment WHERE order_id = $1",
+                row["id"],
+            )
+            if payment_status != "COMPLETED":
+                raise APIException(
+                    "Record cash collection before delivery.", status.HTTP_409_CONFLICT
+                )
         if new_status == OrderStatus.CANCELLED:
             # Payment/refund processing is a separate workflow. Do not cancel
             # an order with a settled payment without a refund integration.

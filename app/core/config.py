@@ -2,6 +2,8 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.domain.enums import Currency
+
 
 class Settings(BaseSettings):
     # -- Core Settings --
@@ -18,6 +20,9 @@ class Settings(BaseSettings):
     postgres_db: str
     postgres_user: str
     postgres_pwd: str
+
+    # Currency is chosen by the store, never by checkout input.
+    payment_currency: Currency = Currency.EGP
 
     # -- Security --
     secret_jwt_key: str

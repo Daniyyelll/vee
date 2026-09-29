@@ -21,6 +21,7 @@ from app.schemas.report import ReportCreate, ReportUpdate, SalesPeriod
 from app.schemas.review import ReviewCreate, ReviewUpdate
 from app.services.cart import add_to_cart, get_cart
 from app.services.order import checkout, get_order, list_orders, update_order_status
+from app.services.payment import collect_cash
 from app.services.report import (
     create_report,
     get_report,
@@ -117,8 +118,10 @@ async def buy(db, user, product_id, quantity=2):
 
 
 async def deliver(db, admin, order):
-    for value in (OrderStatus.PROCESSING, OrderStatus.SHIPPED, OrderStatus.DELIVERED):
+    for value in (OrderStatus.PROCESSING, OrderStatus.SHIPPED):
         await update_order_status(db, admin, order.order_number, value)
+    await collect_cash(db, admin, order.order_number)
+    await update_order_status(db, admin, order.order_number, OrderStatus.DELIVERED)
 
 
 def test_checkout_snapshots_ownership_status_and_cancellation(database_url):
@@ -210,11 +213,7 @@ def test_empty_cart_and_paid_cancellation(database_url):
             assert error.value.status_code == 400
             order = await buy(db, customer, product_id)
             await db.execute(
-                """INSERT INTO payment (
-                id, amount, currency, payment_status, provider_transaction_id,
-                payment_method, order_id)
-                VALUES ($1, 400, 'EGP', 'COMPLETED', 'test', 'CASH', $2)""",
-                uuid4(),
+                "UPDATE payment SET payment_status = 'COMPLETED' WHERE order_id = $1",
                 order.id,
             )
             with pytest.raises(APIException) as error:
