@@ -4,6 +4,30 @@ FastAPI with asyncpg services and explicit PostgreSQL migrations. Run the API
 with `uv run python main.py`; interactive API documentation is at
 [localhost:8084/docs](http://localhost:8084/docs).
 
+## Sign-in sessions
+
+`POST /api/auth/login` returns the existing 15-minute bearer access token and
+sets a 14-day `vee-refresh` cookie. The cookie is HttpOnly, scoped to
+`/api/auth`, and contains an opaque random token. PostgreSQL stores only its
+SHA-256 hash. The frontend keeps the access token in memory and calls
+`POST /api/auth/refresh` with the cookie on reload or when the access token
+expires. Each refresh atomically replaces the cookie token and returns a new
+access token. `POST /api/auth/logout` deletes that refresh session and clears
+the cookie. A password change or reset invalidates all existing access and
+refresh tokens through `token_version`.
+
+Apply migration `d4a7f6c20e91` before deploying these endpoints. In production,
+serve the API over HTTPS. `REFRESH_COOKIE_SECURE` defaults to true except for
+loopback development; `REFRESH_COOKIE_SAMESITE` defaults to `lax`. If the
+storefront and API are on different sites, set `REFRESH_COOKIE_SAMESITE=none`
+and `REFRESH_COOKIE_SECURE=true`, and configure exact `FRONTEND_URL` and
+`BACKEND_URL` origins. CORS permits credentials only from `FRONTEND_URL`.
+Browser requests to login, refresh, and logout with an `Origin` header are
+also checked against those configured origins. Keep access tokens out of
+persistent browser storage. Logout ends refresh capability immediately; an
+already-issued access token remains valid until its 15-minute expiry unless
+the account's token version changes.
+
 ## Orders, reviews, and reports
 
 All bodies accept camelCase and snake_case fields. Responses use the existing

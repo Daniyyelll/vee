@@ -129,6 +129,19 @@ async def show_orders(
     return APIResponse(status_code=200, message="Orders", data=orders)
 
 
+@router.get("/mine")
+async def show_my_orders(
+    response: Response,
+    limit: int = Query(default=10, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
+    user: dict[str, Any] = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_connection),
+) -> APIResponse[list[OrderRead]]:
+    orders = await list_orders(db, user, limit=limit, offset=offset, mine_only=True)
+    response.headers["Cache-Control"] = "no-store"
+    return APIResponse(status_code=200, message="Your orders", data=orders)
+
+
 @router.get("/{order_number}")
 async def show_order(
     order_number: int = Path(gt=0),

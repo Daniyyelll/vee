@@ -75,3 +75,20 @@ def test_percentage_and_free_shipping_discounts():
         assert error.value.status_code == 409
 
     asyncio.run(scenario())
+
+
+def test_missing_and_inactive_coupons_have_distinct_messages():
+    async def scenario():
+        db = CouponDatabase(None)
+        with pytest.raises(APIException) as missing:
+            await redeem_coupon(db, "MISSING", None, Decimal("200"), Decimal("50"))
+        assert missing.value.status_code == 404
+        assert missing.value.message == "Coupon does not exist."
+
+        db.coupon = {"active": False}
+        with pytest.raises(APIException) as inactive:
+            await redeem_coupon(db, "INACTIVE", None, Decimal("200"), Decimal("50"))
+        assert inactive.value.status_code == 409
+        assert inactive.value.message == "Coupon is inactive."
+
+    asyncio.run(scenario())

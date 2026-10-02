@@ -129,6 +129,7 @@ async def maintenance_worker(pool: asyncpg.Pool) -> None:
                 await db.execute(
                     "DELETE FROM reset_code WHERE expires_at < NOW() - INTERVAL '1 day'"
                 )
+                await db.execute("DELETE FROM refresh_session WHERE expires_at < NOW()")
                 await db.execute(
                     "DELETE FROM email_outbox "
                     "WHERE sent_at < NOW() - INTERVAL '90 days'"

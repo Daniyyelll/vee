@@ -79,9 +79,9 @@ async def register_user(
     return user_to_dict(row)
 
 
-async def login_user(
+async def limit_login_attempt(
     connection: asyncpg.Connection, login_data: UserLogin
-) -> TokenData:
+) -> None:
     await consume_rate_limit(
         connection,
         "login-email",
@@ -89,12 +89,18 @@ async def login_user(
         limit=10,
         window_seconds=900,
     )
+
+
+async def login_user(
+    connection: asyncpg.Connection, login_data: UserLogin
+) -> TokenData:
     row = await connection.fetchrow(
         """
         SELECT id, name, email, hashed_password, role::text AS role, active,
                address, phone, token_version
         FROM "user"
         WHERE lower(email) = $1
+        FOR UPDATE
         """,
         str(login_data.email),
     )

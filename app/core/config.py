@@ -1,6 +1,7 @@
 from decimal import Decimal
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -34,6 +35,14 @@ class Settings(BaseSettings):
     secret_jwt_key: str = Field(min_length=32)
     checkout_hmac_key: str | None = Field(default=None, min_length=32)
     algorithm: Literal["HS256"] = "HS256"
+    refresh_cookie_secure: bool | None = None
+    refresh_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+
+    @property
+    def REFRESH_COOKIE_SECURE(self) -> bool:
+        if self.refresh_cookie_secure is not None:
+            return self.refresh_cookie_secure
+        return urlsplit(self.BACKEND_URL).hostname not in ("localhost", "127.0.0.1")
 
     # SMTP
     mail_user: str

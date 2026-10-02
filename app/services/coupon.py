@@ -98,8 +98,10 @@ async def redeem_coupon(
         "SELECT * FROM coupon WHERE code = $1" + (" FOR UPDATE" if lock else ""),
         normalized,
     )
-    if row is None or not row["active"]:
-        raise APIException("Coupon is invalid or inactive.", status.HTTP_409_CONFLICT)
+    if row is None:
+        raise APIException("Coupon does not exist.", status.HTTP_404_NOT_FOUND)
+    if not row["active"]:
+        raise APIException("Coupon is inactive.", status.HTTP_409_CONFLICT)
     now = await db.fetchval("SELECT NOW()")
     if (row["starts_at"] and now < row["starts_at"]) or (
         row["expires_at"] and now >= row["expires_at"]

@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock
@@ -15,6 +16,7 @@ from app.core.security import create_access_token
 from app.db.session import get_connection
 from app.schemas.product import ProductRead
 from app.schemas.review import ReviewResponse
+from app.schemas.user import TokenData
 from app.services.category import get_category_id_from_slug
 
 
@@ -24,6 +26,13 @@ def storefront(monkeypatch):
     app.include_router(api_router)
     app.add_exception_handler(APIException, api_exception_handler)
     db = AsyncMock()
+
+    @asynccontextmanager
+    async def transaction():
+        yield
+
+    db.transaction = transaction
+    db.fetchval.return_value = 0
     app.dependency_overrides[get_connection] = lambda: db
     user = {
         "id": uuid4(),
@@ -55,13 +64,7 @@ def storefront(monkeypatch):
     monkeypatch.setattr(
         auth_api,
         "login_user",
-        AsyncMock(
-            return_value={
-                "token": "test-credential",
-                "token_type": "bearer",
-                "user": user,
-            }
-        ),
+        AsyncMock(return_value=TokenData(token="test-credential", user=user)),
     )
     with TestClient(app) as client:
         yield client, app, db, user, product, remove
@@ -152,7 +155,7 @@ def test_cors_allows_configured_origin_and_rejects_another_origin():
     response = client.options("/api/users/update-profile", headers=headers)
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == headers["Origin"]
-    assert "access-control-allow-credentials" not in response.headers
+    assert response.headers["access-control-allow-credentials"] == "true"
     headers["Origin"] = "https://unrelated.example"
     assert (
         client.options("/api/users/update-profile", headers=headers).status_code == 400

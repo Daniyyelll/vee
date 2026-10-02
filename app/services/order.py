@@ -143,6 +143,8 @@ async def list_orders(
     order_status: OrderStatus | None = None,
     limit: int = 50,
     offset: int = 0,
+    *,
+    mine_only: bool = False,
 ) -> list[OrderRead]:
     rows = await db.fetch(
         f"""
@@ -152,7 +154,7 @@ async def list_orders(
           AND ($3::text IS NULL OR o.status::text = $3)
         ORDER BY o.created_at DESC, o.order_number DESC LIMIT $4 OFFSET $5
         """,
-        user["role"] in (UserRole.ADMIN, UserRole.DELIVERY),
+        not mine_only and user["role"] in (UserRole.ADMIN, UserRole.DELIVERY),
         user["id"],
         order_status.name if order_status else None,
         limit,

@@ -52,7 +52,7 @@ app.mount(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.FRONTEND_URL.rstrip("/")],
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -61,6 +61,7 @@ app.add_exception_handler(APIException, api_exception_handler)
 
 PUBLIC_LIMITS = {
     "/api/auth/login": (30, 900),
+    "/api/auth/refresh": (120, 60),
     "/api/auth/register": (10, 3600),
     "/api/auth/forgot-password": (10, 3600),
     "/api/auth/reset-password": (20, 900),
