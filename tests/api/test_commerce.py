@@ -103,15 +103,23 @@ def commerce_client(monkeypatch):
         for name, result in results.items():
             services[name] = AsyncMock(return_value=result)
             monkeypatch.setattr(module, name, services[name])
-    for name in ("send_order_confirmation_email", "send_order_status_update_email"):
-        services[name] = AsyncMock()
-        monkeypatch.setattr(order_api, name, services[name])
     with TestClient(app) as client:
         yield client, connection, user, services
 
 
 ROUTES = [
-    ("POST", "/api/orders/checkout", {"shippingAddress": "Cairo"}, "checkout", 201),
+    (
+        "POST",
+        "/api/orders/checkout",
+        {
+            "shippingAddress": "Cairo",
+            "deliveryArea": "Cairo",
+            "name": "Buyer",
+            "phone": "01012345678",
+        },
+        "checkout",
+        201,
+    ),
     ("GET", "/api/orders", None, "list_orders", 200),
     ("GET", "/api/orders/1", None, "get_order", 200),
     (
@@ -175,9 +183,6 @@ def test_registered_routes_and_authenticated_identity(
         assert response.json()["status_code"] == expected
     if service == "checkout":
         assert response.json()["data"]["totalPrice"] == "200.00"
-        services["send_order_confirmation_email"].assert_awaited_once()
-    if service == "update_order_status":
-        services["send_order_status_update_email"].assert_awaited_once()
 
 
 @pytest.mark.parametrize(
@@ -218,8 +223,27 @@ def test_admin_report_routes_reject_other_roles(
 @pytest.mark.parametrize(
     "method,path,body",
     [
-        ("POST", "/api/orders/checkout", {"shippingAddress": "   "}),
-        ("POST", "/api/orders/checkout", {"shippingAddress": "Cairo", "totalPrice": 1}),
+        (
+            "POST",
+            "/api/orders/checkout",
+            {
+                "shippingAddress": "   ",
+                "deliveryArea": "Cairo",
+                "name": "Buyer",
+                "phone": "01012345678",
+            },
+        ),
+        (
+            "POST",
+            "/api/orders/checkout",
+            {
+                "shippingAddress": "Cairo",
+                "deliveryArea": "Cairo",
+                "name": "Buyer",
+                "phone": "01012345678",
+                "totalPrice": 1,
+            },
+        ),
         ("GET", "/api/orders?limit=101", None),
         ("GET", "/api/orders?offset=-1", None),
         ("GET", "/api/orders/0", None),
@@ -265,9 +289,16 @@ def test_invalid_requests_never_call_services(commerce_client, method, path, bod
 def test_order_conflict_does_not_send_confirmation(commerce_client):
     client, _, _, services = commerce_client
     services["checkout"].side_effect = APIException("Insufficient stock", 409)
-    response = client.post("/api/orders/checkout", json={"shippingAddress": "Cairo"})
+    response = client.post(
+        "/api/orders/checkout",
+        json={
+            "shippingAddress": "Cairo",
+            "deliveryArea": "Cairo",
+            "name": "Buyer",
+            "phone": "01012345678",
+        },
+    )
     assert response.status_code == 409
-    services["send_order_confirmation_email"].assert_not_awaited()
 
 
 def test_public_reviews_do_not_require_authentication(commerce_client):

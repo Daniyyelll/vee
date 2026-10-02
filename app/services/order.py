@@ -1,16 +1,30 @@
 """Order checkout, ownership and inventory lifecycle."""
 
+import hmac
+import json
 from decimal import Decimal
+from hashlib import sha256
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import asyncpg
 from fastapi import status
 
+from app.core.config import settings
 from app.core.exceptions import APIException
-from app.domain.enums import OrderStatus, UserRole
-from app.schemas.order import CheckoutRequest, OrderRead
+from app.domain.enums import DeliveryArea, OrderStatus, UserRole
+from app.schemas.order import (
+    CheckoutRequest,
+    GuestCheckoutItem,
+    GuestCheckoutRequest,
+    OrderQuote,
+    OrderRead,
+    OrderReceiptRead,
+    QuoteItemRead,
+)
 from app.services.cart import _lock_cart
+from app.services.coupon import redeem_coupon
+from app.services.outbox import enqueue_email
 from app.services.payment import (
     PAYMENT_COLUMNS,
     insert_cash_payment,
@@ -20,8 +34,12 @@ from app.services.user import user_to_dict
 
 ORDER_COLUMNS = """
     o.id, o.order_number, o.total_price, o.status::text AS status,
-    o.shipping_address, o.created_at,
-    u.id AS user_id, u.name, u.email, u.role::text AS role, u.active, u.address
+    o.shipping_address, o.delivery_area, o.created_at, o.guest_name, o.guest_email,
+    o.guest_phone, o.recipient_name, o.recipient_phone,
+    o.subtotal_price, o.discount_amount, o.shipping_fee,
+    o.coupon_code, o.currency::text AS currency, o.expires_at,
+    u.id AS user_id, u.name, u.email, u.role::text AS role, u.active,
+    u.address, u.phone
 """
 
 TRANSITIONS = {
@@ -31,6 +49,33 @@ TRANSITIONS = {
     OrderStatus.DELIVERED: set(),
     OrderStatus.CANCELLED: set(),
 }
+
+
+def order_receipt_token(order_id: UUID) -> str:
+    """A receipt capability separate from sequential order numbers and JWTs."""
+    secret = settings.checkout_hmac_key or settings.secret_jwt_key
+    return hmac.new(
+        secret.encode(), f"vee-order-receipt:{order_id}".encode(), sha256
+    ).hexdigest()
+
+
+async def get_order_receipt(
+    db: asyncpg.Connection, order_number: int, receipt_token: str
+) -> OrderReceiptRead:
+    row = await db.fetchrow(
+        """
+        SELECT id, order_number, total_price, currency::text AS currency,
+               recipient_name, recipient_phone, shipping_address, delivery_area
+        FROM "order"
+        WHERE order_number = $1 AND created_at > NOW() - INTERVAL '30 days'
+        """,
+        order_number,
+    )
+    if row is None or not hmac.compare_digest(
+        order_receipt_token(row["id"]), receipt_token
+    ):
+        raise APIException("Order receipt not found.", status.HTTP_404_NOT_FOUND)
+    return OrderReceiptRead.model_validate(dict(row))
 
 
 async def _read_orders(db: asyncpg.Connection, rows) -> list[OrderRead]:
@@ -63,7 +108,11 @@ async def _read_orders(db: asyncpg.Connection, rows) -> list[OrderRead]:
     for row in rows:
         data = dict(row)
         data["status"] = OrderStatus(data["status"].lower())
-        data["user"] = user_to_dict({**data, "id": data["user_id"]})
+        data["user"] = (
+            user_to_dict({**data, "id": data["user_id"]})
+            if data["user_id"] is not None
+            else None
+        )
         data["items"] = grouped.get(data["id"], [])
         data["payment"] = payments_by_order.get(data["id"])
         orders.append(OrderRead.model_validate(data))
@@ -76,7 +125,7 @@ async def get_order(
     row = await db.fetchrow(
         f"""
         SELECT {ORDER_COLUMNS}
-        FROM "order" o JOIN "user" u ON u.id = o.user_id
+        FROM "order" o LEFT JOIN "user" u ON u.id = o.user_id
         WHERE o.order_number = $1 AND ($2::boolean OR o.user_id = $3)
         """,
         order_number,
@@ -98,7 +147,7 @@ async def list_orders(
     rows = await db.fetch(
         f"""
         SELECT {ORDER_COLUMNS}
-        FROM "order" o JOIN "user" u ON u.id = o.user_id
+        FROM "order" o LEFT JOIN "user" u ON u.id = o.user_id
         WHERE ($1::boolean OR o.user_id = $2)
           AND ($3::text IS NULL OR o.status::text = $3)
         ORDER BY o.created_at DESC, o.order_number DESC LIMIT $4 OFFSET $5
@@ -125,7 +174,8 @@ async def checkout(
         items = await db.fetch(
             """
             SELECT p.id AS product_id, p.product_name, p.price,
-                   p.stock_quantity, ci.quantity
+                   p.stock_quantity, p.active, p.currency::text AS currency,
+                   ci.quantity
             FROM cart_item ci JOIN product p ON p.id = ci.product_id
             WHERE ci.cart_id = $1 ORDER BY p.id FOR UPDATE OF p
             """,
@@ -133,64 +183,291 @@ async def checkout(
         )
         if not items:
             raise APIException("Your cart is empty.")
-        for item in items:
-            if item["quantity"] > item["stock_quantity"]:
-                raise APIException(
-                    f"Insufficient stock for {item['product_name']}.",
-                    status.HTTP_409_CONFLICT,
-                )
-            if item["price"] is None or item["price"] <= 0:
-                raise APIException(
-                    "Product price unavailable.", status.HTTP_409_CONFLICT
-                )
-        total = sum(
-            (item["price"] * item["quantity"] for item in items), Decimal("0.00")
-        )
-        if total > Decimal("99999999.99"):
-            raise APIException("Order total exceeds the supported limit.")
-        order_id = uuid4()
-        number = await db.fetchval(
-            """
-            INSERT INTO "order" (
-                id, order_number, total_price, shipping_address, status, user_id
-            ) VALUES ($1, nextval('order_number_seq'), $2, $3, 'PENDING', $4)
-            RETURNING order_number
-            """,
-            order_id,
-            total,
+        result = await _create_order(
+            db,
+            items,
             request.shipping_address,
-            user["id"],
+            request.coupon_code,
+            user_id=user["id"],
+            recipient_name=request.name,
+            recipient_phone=request.phone,
+            delivery_area=request.delivery_area,
+            expected_total=request.expected_total,
         )
-        await db.executemany(
+        await db.execute("DELETE FROM cart_item WHERE cart_id = $1", cart_id)
+    return result
+
+
+async def guest_checkout(
+    db: asyncpg.Connection, request: GuestCheckoutRequest, idempotency_key: str
+) -> OrderRead:
+    key = hmac.new(
+        (settings.checkout_hmac_key or settings.secret_jwt_key).encode(),
+        idempotency_key.encode(),
+        sha256,
+    ).hexdigest()
+    request_hash = sha256(
+        json.dumps(request.model_dump(mode="json"), sort_keys=True).encode()
+    ).hexdigest()
+    quantities = _requested_quantities(request.items)
+    async with db.transaction():
+        await db.execute(
             """
+            INSERT INTO guest_checkout_request (key, request_hash)
+            VALUES ($1, $2) ON CONFLICT (key) DO NOTHING
+            """,
+            key,
+            request_hash,
+        )
+        attempt = await db.fetchrow(
+            "SELECT request_hash, order_id FROM guest_checkout_request "
+            "WHERE key = $1 FOR UPDATE",
+            key,
+        )
+        if attempt["request_hash"] != request_hash:
+            raise APIException(
+                "Idempotency key was used for another request.",
+                status.HTTP_409_CONFLICT,
+            )
+        if attempt["order_id"]:
+            row = await db.fetchrow(
+                f"""SELECT {ORDER_COLUMNS} FROM "order" o
+                LEFT JOIN "user" u ON u.id = o.user_id WHERE o.id = $1""",
+                attempt["order_id"],
+            )
+            return (await _read_orders(db, [row]))[0]
+        products = await db.fetch(
+            """
+            SELECT id AS product_id, product_name, price, stock_quantity,
+                   active, currency::text AS currency
+            FROM product WHERE id = ANY($1::uuid[])
+            ORDER BY id FOR UPDATE
+            """,
+            list(quantities),
+        )
+        if len(products) != len(quantities):
+            raise APIException("Product not found.", status.HTTP_404_NOT_FOUND)
+        items = [
+            {**dict(row), "quantity": quantities[row["product_id"]]} for row in products
+        ]
+        order = await _create_order(
+            db,
+            items,
+            request.shipping_address,
+            request.coupon_code,
+            guest_name=request.name,
+            guest_email=str(request.email),
+            guest_phone=request.phone,
+            recipient_name=request.name,
+            recipient_phone=request.phone,
+            delivery_area=request.delivery_area,
+            expected_total=request.expected_total,
+        )
+        await db.execute(
+            "UPDATE guest_checkout_request SET order_id = $2 WHERE key = $1",
+            key,
+            order.id,
+        )
+        return order
+
+
+def _requested_quantities(items: list[GuestCheckoutItem]) -> dict[UUID, int]:
+    quantities = {}
+    for item in items:
+        if item.product_id in quantities:
+            raise APIException("Each product may appear only once.")
+        quantities[item.product_id] = item.quantity
+    return quantities
+
+
+async def quote_guest_order(
+    db: asyncpg.Connection,
+    items: list[GuestCheckoutItem],
+    coupon_code: str | None,
+) -> OrderQuote:
+    quantities = _requested_quantities(items)
+    products = await db.fetch(
+        """
+        SELECT id AS product_id, product_name, price, stock_quantity,
+               active, currency::text AS currency
+        FROM product WHERE id = ANY($1::uuid[])
+        ORDER BY id
+        """,
+        list(quantities),
+    )
+    if len(products) != len(quantities):
+        raise APIException("Product not found.", status.HTTP_404_NOT_FOUND)
+    rows = [
+        {**dict(row), "quantity": quantities[row["product_id"]]} for row in products
+    ]
+    quote, _ = await _price_items(db, rows, coupon_code, None, lock_coupon=False)
+    return quote
+
+
+async def quote_cart_order(
+    db: asyncpg.Connection, user_id: UUID, coupon_code: str | None
+) -> OrderQuote:
+    rows = await db.fetch(
+        """
+        SELECT p.id AS product_id, p.product_name, p.price,
+               p.stock_quantity, p.active, p.currency::text AS currency,
+               ci.quantity
+        FROM cart c JOIN cart_item ci ON ci.cart_id = c.id
+        JOIN product p ON p.id = ci.product_id
+        WHERE c.user_id = $1 ORDER BY p.id
+        """,
+        user_id,
+    )
+    if not rows:
+        raise APIException("Your cart is empty.")
+    quote, _ = await _price_items(db, rows, coupon_code, user_id, lock_coupon=False)
+    return quote
+
+
+async def _price_items(
+    db: asyncpg.Connection,
+    items,
+    coupon_code: str | None,
+    user_id: UUID | None,
+    *,
+    lock_coupon: bool,
+) -> tuple[OrderQuote, UUID | None]:
+    if not items:
+        raise APIException("Your cart is empty.")
+    quoted_items = []
+    for item in items:
+        if not item["active"]:
+            raise APIException("Product is unavailable.", status.HTTP_409_CONFLICT)
+        if item["currency"] != settings.payment_currency.value:
+            raise APIException(
+                "Product currency does not match the store.",
+                status.HTTP_409_CONFLICT,
+            )
+        if item["quantity"] > item["stock_quantity"]:
+            raise APIException(
+                f"Insufficient stock for {item['product_name']}.",
+                status.HTTP_409_CONFLICT,
+            )
+        if item["price"] is None or item["price"] <= 0:
+            raise APIException("Product price unavailable.", status.HTTP_409_CONFLICT)
+        quoted_items.append(
+            QuoteItemRead(
+                product_id=item["product_id"],
+                product_name=item["product_name"],
+                quantity=item["quantity"],
+                unit_price=item["price"],
+                subtotal=item["price"] * item["quantity"],
+            )
+        )
+    subtotal = sum((item.subtotal for item in quoted_items), Decimal("0.00"))
+    coupon_id, applied_code, discount = await redeem_coupon(
+        db, coupon_code, user_id, subtotal, settings.shipping_fee, lock=lock_coupon
+    )
+    total = subtotal + settings.shipping_fee - discount
+    if total > Decimal("99999999.99"):
+        raise APIException("Order total exceeds the supported limit.")
+    return (
+        OrderQuote(
+            items=quoted_items,
+            subtotal_price=subtotal,
+            shipping_fee=settings.shipping_fee,
+            discount_amount=discount,
+            total_price=total,
+            coupon_code=applied_code,
+            currency=settings.payment_currency,
+        ),
+        coupon_id,
+    )
+
+
+async def _create_order(
+    db: asyncpg.Connection,
+    items,
+    shipping_address: str,
+    coupon_code: str | None,
+    *,
+    user_id: UUID | None = None,
+    guest_name: str | None = None,
+    guest_email: str | None = None,
+    guest_phone: str | None = None,
+    recipient_name: str,
+    recipient_phone: str,
+    delivery_area: DeliveryArea,
+    expected_total: Decimal | None = None,
+) -> OrderRead:
+    quote, coupon_id = await _price_items(
+        db, items, coupon_code, user_id, lock_coupon=True
+    )
+    if expected_total is not None and quote.total_price != expected_total:
+        raise APIException(
+            "Your order total changed. Please review the updated total and try again.",
+            status.HTTP_409_CONFLICT,
+        )
+    order_id = uuid4()
+    await db.execute(
+        """
+            INSERT INTO "order" (
+                id, order_number, total_price, subtotal_price, discount_amount,
+                shipping_fee,
+                coupon_id, coupon_code, shipping_address, delivery_area,
+                status, user_id,
+                guest_name, guest_email, guest_phone, recipient_name,
+                recipient_phone, currency, expires_at
+            ) VALUES ($1, nextval('order_number_seq'), $2, $3, $4, $5,
+                      $6, $7, $8, $9, 'PENDING', $10, $11, $12, $13,
+                      $14, $15, $16, NOW() + INTERVAL '24 hours')
+            """,
+        order_id,
+        quote.total_price,
+        quote.subtotal_price,
+        quote.discount_amount,
+        quote.shipping_fee,
+        coupon_id,
+        quote.coupon_code,
+        shipping_address,
+        delivery_area.value,
+        user_id,
+        guest_name,
+        guest_email,
+        guest_phone,
+        recipient_name,
+        recipient_phone,
+        quote.currency.value,
+    )
+    await db.executemany(
+        """
             INSERT INTO order_item (
                 id, order_id, product_id, product_name, quantity, unit_price,
                 is_reviewed
-            ) VALUES ($1, $2, $3, $4, $5, $6, EXISTS (
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7::uuid IS NOT NULL AND EXISTS (
                 SELECT 1 FROM review WHERE user_id = $7 AND product_id = $3
             ))
             """,
-            [
-                (
-                    uuid4(),
-                    order_id,
-                    item["product_id"],
-                    item["product_name"],
-                    item["quantity"],
-                    item["price"],
-                    user["id"],
-                )
-                for item in items
-            ],
-        )
-        await db.executemany(
-            "UPDATE product SET stock_quantity = stock_quantity - $2 WHERE id = $1",
-            [(item["product_id"], item["quantity"]) for item in items],
-        )
-        await insert_cash_payment(db, order_id, total)
-        await db.execute("DELETE FROM cart_item WHERE cart_id = $1", cart_id)
-        result = await get_order(db, user, number)
-    return result
+        [
+            (
+                uuid4(),
+                order_id,
+                item["product_id"],
+                item["product_name"],
+                item["quantity"],
+                item["price"],
+                user_id,
+            )
+            for item in items
+        ],
+    )
+    await db.executemany(
+        "UPDATE product SET stock_quantity = stock_quantity - $2 WHERE id = $1",
+        [(item["product_id"], item["quantity"]) for item in items],
+    )
+    await insert_cash_payment(db, order_id, quote.total_price)
+    await enqueue_email(db, "order_confirmation", {"order_id": str(order_id)})
+    row = await db.fetchrow(
+        f"""SELECT {ORDER_COLUMNS} FROM "order" o
+            LEFT JOIN "user" u ON u.id = o.user_id WHERE o.id = $1""",
+        order_id,
+    )
+    return (await _read_orders(db, [row]))[0]
 
 
 async def update_order_status(
@@ -282,5 +559,32 @@ async def update_order_status(
         await db.execute(
             'UPDATE "order" SET status = $2 WHERE id = $1', row["id"], new_status.name
         )
+        await enqueue_email(
+            db, "order_status", {"order_id": str(row["id"]), "status": new_status.value}
+        )
         result = await get_order(db, user, order_number)
     return result
+
+
+async def expire_pending_orders(db: asyncpg.Connection) -> int:
+    """Release stale COD reservations using the normal cancellation workflow."""
+    rows = await db.fetch(
+        """
+        SELECT order_number FROM "order"
+        WHERE status = 'PENDING' AND expires_at <= NOW()
+        ORDER BY expires_at LIMIT 100
+        """
+    )
+    staff = {"id": UUID(int=0), "role": UserRole.ADMIN}
+    expired = 0
+    for row in rows:
+        try:
+            await update_order_status(
+                db, staff, row["order_number"], OrderStatus.CANCELLED
+            )
+        except APIException as exc:
+            if exc.status_code != status.HTTP_409_CONFLICT:
+                raise
+        else:
+            expired += 1
+    return expired

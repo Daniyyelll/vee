@@ -6,6 +6,42 @@
   <component name="ChangeListManager">
     <list default="true" id="e36c8ac7-5fff-4da6-b164-f21cab3b6ffc" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/api.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/category.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/category.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/dependencies.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/dependencies.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/order.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/order.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/product.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/product.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/review.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/review.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/category.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/category.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/order.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/order.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/product.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/product.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/report.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/report.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/user.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/user.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/cart.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/cart.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/category.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/category.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/email.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/email.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/order.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/order.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/payment.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/payment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/product.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/product.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/report.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/report.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/review.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/review.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/user.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/user.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/templates/reset-password.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/templates/reset-password.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/migrations/versions/9af72ba65e06_cart_constraint.py" beforeDir="false" afterPath="$PROJECT_DIR$/migrations/versions/9af72ba65e06_cart_constraint.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/migrations/versions/f8b19136a0bf_slug.py" beforeDir="false" afterPath="$PROJECT_DIR$/migrations/versions/f8b19136a0bf_slug.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/api/test_commerce.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/api/test_commerce.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/services/test_cart.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/services/test_cart.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/services/test_commerce.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/services/test_commerce.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/services/test_order_email.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/services/test_order_email.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/services/test_payment.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/services/test_payment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/services/test_registration.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/services/test_registration.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/uv.lock" beforeDir="false" afterPath="$PROJECT_DIR$/uv.lock" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -13,7 +49,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="1693" />
+    <option name="cachedIndexableFilesCount" value="1504" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -101,34 +137,34 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "git-widget-placeholder": "dev-backend",
-    "junie.onboarding.icon.badge.shown": "true",
-    "last_opened_file_path": "//wsl.localhost/Ubuntu/home/linux_elite_user/projects/vee",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "run.code.analysis.last.selected.profile": "pProject Default",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "to.speed.mode.migration.done": "true",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;dev-backend&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;//wsl.localhost/Ubuntu/home/linux_elite_user/projects/vee&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;run.code.analysis.last.selected.profile&quot;: &quot;pProject Default&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "DatabaseDriversLRU": [
-      "postgresql"
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;postgresql&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -170,6 +206,7 @@
       <workItem from="1790534308166" duration="4453000" />
       <workItem from="1790550573881" duration="15380000" />
       <workItem from="1790639289720" duration="11259000" />
+      <workItem from="1790897525182" duration="1227000" />
     </task>
     <servers />
   </component>

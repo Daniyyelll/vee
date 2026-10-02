@@ -14,6 +14,7 @@
         <p>Hi {{ name }}, thank you for your order <strong>#{{ order_id }}</strong>.</p>
         <hr>
         <p><strong>Total:</strong> {{ total }}</p>
+        {% if delivery_area %}<p><strong>Area:</strong> {{ delivery_area }}</p>{% endif %}
         <p><strong>Shipping to:</strong> {{ address }}</p>
         <p>We'll notify you once your items are on the way.</p>
     </div>

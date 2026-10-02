@@ -5,15 +5,17 @@ import importlib.util
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import asyncpg
 import pytest
 
 from app.core.exceptions import APIException
-from app.domain.enums import OrderStatus, PaymentMethod, PaymentStatus
+from app.domain.enums import OrderStatus, PaymentMethod, PaymentStatus, UserRole
 from app.schemas.order import CheckoutRequest
 from app.schemas.payment import CashRefundRequest
+from app.services import payment as payment_service
 from app.services.order import update_order_status
 from app.services.payment import (
     collect_cash,
@@ -39,7 +41,7 @@ def test_cash_checkout_collection_delivery_and_refund(database_url):
             customer, _, admin, delivery = users
             order = await buy(db, customer, product_id)
             payment = order.payment
-            assert payment.amount == Decimal("400.00")
+            assert payment.amount == Decimal("450.00")
             assert payment.payment_status == PaymentStatus.PENDING
             assert payment.payment_method == PaymentMethod.CASH
             assert payment.collected_at is None and payment.collected_by is None
@@ -81,7 +83,7 @@ def test_cash_checkout_collection_delivery_and_refund(database_url):
             with pytest.raises(APIException) as error:
                 await collect_cash(db, admin, order.order_number)
             assert error.value.status_code == 409
-            assert await db.fetchval("SELECT stock_quantity FROM product") == 8
+            assert await db.fetchval("SELECT stock_quantity FROM product") == 10
 
     asyncio.run(scenario())
 
@@ -191,7 +193,16 @@ def test_payment_insert_failure_rolls_back_order_cart_and_stock(database_url):
                 "ALTER TABLE payment ADD CONSTRAINT test_failure CHECK (amount < 1)"
             )
             with pytest.raises(asyncpg.CheckViolationError):
-                await checkout(db, customer, CheckoutRequest(shipping_address="Cairo"))
+                await checkout(
+                    db,
+                    customer,
+                    CheckoutRequest(
+                        name="Buyer",
+                        phone="01012345678",
+                        shipping_address="Cairo",
+                        delivery_area="Cairo",
+                    ),
+                )
             assert await db.fetchval('SELECT count(*) FROM "order"') == 0
             assert await db.fetchval("SELECT count(*) FROM payment") == 0
             assert await db.fetchval("SELECT stock_quantity FROM product") == 10
@@ -229,3 +240,33 @@ def test_cash_migration_preserves_records_on_downgrade_and_upgrade(database_url)
                 await db.execute("UPDATE payment SET payment_method = 'INSTAPAY'")
 
     asyncio.run(scenario())
+
+
+def test_refund_restocks_once_inside_payment_transaction(monkeypatch):
+    product_id, order_id, payment_id, admin_id = (uuid4() for _ in range(4))
+    db = MagicMock()
+    db.fetchrow = AsyncMock(
+        side_effect=[
+            {"id": payment_id, "status": "COMPLETED", "refund_reason": None},
+            {"id": payment_id, "status": "REFUNDED", "refund_reason": "Returned"},
+        ]
+    )
+    db.fetch = AsyncMock(return_value=[{"id": product_id, "quantity": 2}])
+    db.executemany = AsyncMock()
+    db.execute = AsyncMock()
+    monkeypatch.setattr(
+        payment_service,
+        "_lock_order",
+        AsyncMock(return_value={"id": order_id, "status": "DELIVERED"}),
+    )
+    result = object()
+    monkeypatch.setattr(payment_service, "get_payment", AsyncMock(return_value=result))
+    admin = {"id": admin_id, "role": UserRole.ADMIN}
+    request = CashRefundRequest(reason="Returned")
+
+    assert asyncio.run(refund_cash(db, admin, 42, request)) is result
+    assert asyncio.run(refund_cash(db, admin, 42, request)) is result
+    db.executemany.assert_awaited_once()
+    assert db.executemany.await_args.args[1] == [(product_id, 2)]
+    assert "FOR UPDATE OF p" in db.fetch.await_args.args[0]
+    assert db.execute.await_count == 1

@@ -1,14 +1,29 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from pydantic.alias_generators import to_camel
 
 from app.domain.enums import UserRole
 
 
 class UserCreate(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=200)
     email: EmailStr
-    password: str
+    password: str = Field(min_length=12, max_length=128)
+    phone: str | None = Field(default=None, min_length=5, max_length=40)
     role: UserRole | None = UserRole.CUSTOMER
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def normalize_phone(cls, value: str | None) -> str | None:
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> EmailStr:
+        return value.lower()
 
 
 class UserRead(BaseModel):
@@ -19,11 +34,13 @@ class UserRead(BaseModel):
         validate_by_alias=True,
     )
 
+    id: UUID | None = None
     name: str
     email: EmailStr
     role: UserRole
     active: bool = True
     address: str | None = None
+    phone: str | None = None
 
 
 class UserLogin(BaseModel):
@@ -36,6 +53,11 @@ class UserLogin(BaseModel):
 
     email: EmailStr
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> EmailStr:
+        return value.lower()
 
 
 class TokenData(BaseModel):
@@ -52,8 +74,16 @@ class UserUpdate(BaseModel):
         validate_by_alias=True,
     )
 
-    name: str | None = None
-    address: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    address: str | None = Field(default=None, max_length=1024)
+    phone: str | None = Field(default=None, min_length=5, max_length=40)
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def normalize_phone(cls, value: str | None) -> str | None:
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
 
 
 class PasswordUpdate(BaseModel):
@@ -65,7 +95,7 @@ class PasswordUpdate(BaseModel):
     )
 
     old_password: str
-    new_password: str
+    new_password: str = Field(min_length=12, max_length=128)
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -78,6 +108,11 @@ class ForgotPasswordRequest(BaseModel):
 
     email: EmailStr
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> EmailStr:
+        return value.lower()
+
 
 class ResetPasswordRequest(BaseModel):
     model_config = ConfigDict(
@@ -87,5 +122,5 @@ class ResetPasswordRequest(BaseModel):
         validate_by_alias=True,
     )
 
-    code: str
-    new_password: str
+    code: str = Field(min_length=32, max_length=128)
+    new_password: str = Field(min_length=12, max_length=128)

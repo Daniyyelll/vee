@@ -1,34 +1,120 @@
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, BackgroundTasks, Depends, Path, Query, status
+from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response, status
 
 from app.api.dependencies import get_current_user
 from app.db.session import get_connection
 from app.domain.enums import OrderStatus
-from app.schemas.order import CheckoutRequest, OrderRead, UpdateOrderStatus
-from app.schemas.response import APIResponse
-from app.services.email import (
-    send_order_confirmation_email,
-    send_order_status_update_email,
+from app.schemas.order import (
+    CartQuoteRequest,
+    CheckoutRequest,
+    GuestCheckoutRequest,
+    GuestQuoteRequest,
+    OrderQuote,
+    OrderRead,
+    OrderReceiptRead,
+    PlacedOrderRead,
+    UpdateOrderStatus,
 )
-from app.services.order import checkout, get_order, list_orders, update_order_status
+from app.schemas.response import APIResponse
+from app.services.order import (
+    checkout,
+    get_order,
+    get_order_receipt,
+    guest_checkout,
+    list_orders,
+    order_receipt_token,
+    quote_cart_order,
+    quote_guest_order,
+    update_order_status,
+)
+from app.services.rate_limit import consume_rate_limit
 
 router = APIRouter(prefix="/orders", tags=["orders"])
+
+
+@router.post("/quote")
+async def quote_guest(
+    body: GuestQuoteRequest,
+    request: Request,
+    db: asyncpg.Connection = Depends(get_connection),
+) -> APIResponse[OrderQuote]:
+    await consume_rate_limit(
+        db,
+        "guest-quote",
+        request.client.host if request.client else "unknown",
+        limit=60,
+        window_seconds=60,
+    )
+    quote = await quote_guest_order(db, body.items, body.coupon_code)
+    return APIResponse(status_code=200, message="Order quote", data=quote)
+
+
+@router.post("/cart-quote")
+async def quote_cart(
+    body: CartQuoteRequest,
+    user: dict[str, Any] = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_connection),
+) -> APIResponse[OrderQuote]:
+    quote = await quote_cart_order(db, user["id"], body.coupon_code)
+    return APIResponse(status_code=200, message="Order quote", data=quote)
 
 
 @router.post("/checkout", status_code=status.HTTP_201_CREATED)
 async def place_order(
     request: CheckoutRequest,
-    background_tasks: BackgroundTasks,
+    response: Response,
     user: dict[str, Any] = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_connection),
-) -> APIResponse[OrderRead]:
+) -> APIResponse[PlacedOrderRead]:
     order = await checkout(db, user, request)
-    background_tasks.add_task(
-        send_order_confirmation_email, str(order.user.email), order.user.name, order
+    response.headers["Cache-Control"] = "no-store"
+    return APIResponse(
+        status_code=201,
+        message="Order placed",
+        data=PlacedOrderRead(
+            **order.model_dump(), receipt_token=order_receipt_token(order.id)
+        ),
     )
-    return APIResponse(status_code=201, message="Order placed", data=order)
+
+
+@router.post("/guest-checkout", status_code=status.HTTP_201_CREATED)
+async def place_guest_order(
+    request: GuestCheckoutRequest,
+    response: Response,
+    idempotency_key: str = Header(min_length=8, max_length=128),
+    db: asyncpg.Connection = Depends(get_connection),
+) -> APIResponse[PlacedOrderRead]:
+    order = await guest_checkout(db, request, idempotency_key)
+    response.headers["Cache-Control"] = "no-store"
+    return APIResponse(
+        status_code=201,
+        message="Order placed",
+        data=PlacedOrderRead(
+            **order.model_dump(), receipt_token=order_receipt_token(order.id)
+        ),
+    )
+
+
+@router.get("/receipt/{order_number}")
+async def show_receipt(
+    request: Request,
+    response: Response,
+    order_number: int = Path(gt=0),
+    receipt_token: str = Header(min_length=64, max_length=64),
+    db: asyncpg.Connection = Depends(get_connection),
+) -> APIResponse[OrderReceiptRead]:
+    await consume_rate_limit(
+        db,
+        "order-receipt",
+        request.client.host if request.client else "unknown",
+        limit=30,
+        window_seconds=60,
+    )
+    receipt = await get_order_receipt(db, order_number, receipt_token)
+    response.headers["Cache-Control"] = "no-store"
+    return APIResponse(status_code=200, message="Order receipt", data=receipt)
 
 
 @router.get("")
@@ -56,13 +142,9 @@ async def show_order(
 @router.patch("/{order_number}/status")
 async def change_order_status(
     request: UpdateOrderStatus,
-    background_tasks: BackgroundTasks,
     order_number: int = Path(gt=0),
     user: dict[str, Any] = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_connection),
 ) -> APIResponse[OrderRead]:
     order = await update_order_status(db, user, order_number, request.status)
-    background_tasks.add_task(
-        send_order_status_update_email, str(order.user.email), order.user.name, order
-    )
     return APIResponse(status_code=200, message="Order status updated", data=order)

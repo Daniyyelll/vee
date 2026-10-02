@@ -57,7 +57,7 @@ async def forgot_password(
 
     return APIResponse[None](
         status_code=status.HTTP_202_ACCEPTED,
-        message=f"Reset password link sent successfully to {request.email}",
+        message="If this account exists, a reset link will be sent.",
     )
 
 

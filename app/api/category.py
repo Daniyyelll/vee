@@ -1,19 +1,17 @@
 import uuid
 
 import asyncpg
-from fastapi import APIRouter, Depends, status, Response
-from starlette.responses import Response
+from fastapi import APIRouter, Depends, Response, status
 
 from app.api.dependencies import is_admin
-from app.core.exceptions import APIException
 from app.db.session import get_connection
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
 from app.schemas.response import APIResponse
 from app.services.category import (
     create_category,
+    delete_category,
     get_all_categories,
     update_category,
-    delete_category,
 )
 
 router = APIRouter(prefix="/categories", tags=["categories"])

@@ -17,6 +17,12 @@ class OrderStatus(enum.StrEnum):
     CANCELLED = "cancelled"
 
 
+class DeliveryArea(enum.StrEnum):
+    CAIRO = "Cairo"
+    NEW_CAIRO = "New Cairo"
+    GIZA = "Giza"
+
+
 class NotificationType(enum.StrEnum):
     ORDER_PLACED = "order_placed"
     ORDER_CONFIRMED = "order_confirmed"

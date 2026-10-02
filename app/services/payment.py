@@ -154,6 +154,10 @@ async def refund_cash(
         )
     async with db.transaction():
         order = await _lock_order(db, order_number)
+        if order["status"] != "DELIVERED":
+            raise APIException(
+                "Refunds require a delivered order.", status.HTTP_409_CONFLICT
+            )
         row = await db.fetchrow(
             """
             SELECT id, payment_status::text AS status, refund_reason FROM payment
@@ -169,6 +173,20 @@ async def refund_cash(
             raise APIException(
                 "Only collected cash can be refunded once.", status.HTTP_409_CONFLICT
             )
+        # The order and payment locks serialize retries; inventory and refund
+        # commit together so the same order cannot be restocked twice.
+        items = await db.fetch(
+            """
+            SELECT p.id, oi.quantity FROM order_item oi
+            JOIN product p ON p.id = oi.product_id
+            WHERE oi.order_id = $1 ORDER BY p.id FOR UPDATE OF p
+            """,
+            order["id"],
+        )
+        await db.executemany(
+            "UPDATE product SET stock_quantity = stock_quantity + $2 WHERE id = $1",
+            [(item["id"], item["quantity"]) for item in items],
+        )
         await db.execute(
             """
             UPDATE payment SET payment_status = 'REFUNDED', refunded_at = NOW(),

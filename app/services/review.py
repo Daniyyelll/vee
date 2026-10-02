@@ -32,6 +32,15 @@ async def list_reviews(
     return [ReviewResponse.model_validate(dict(row)) for row in rows]
 
 
+async def get_review(db: asyncpg.Connection, review_id: UUID) -> ReviewResponse:
+    row = await db.fetchrow(
+        f"SELECT {REVIEW_COLUMNS} FROM review WHERE id = $1", review_id
+    )
+    if row is None:
+        raise APIException("Review not found.", status.HTTP_404_NOT_FOUND)
+    return ReviewResponse.model_validate(dict(row))
+
+
 async def _mark_reviewed(db, user_id: UUID, product_id: UUID, reviewed: bool):
     await db.execute(
         """

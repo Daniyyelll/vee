@@ -1,22 +1,20 @@
 from decimal import Decimal
-from uuid import UUID
 
 import asyncpg
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
 
 from app.api.dependencies import is_admin
 from app.core.exceptions import APIException
 from app.db.session import get_connection
-from app.schemas.product import ProductCreate, ProductUpdate
+from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.schemas.response import APIResponse
 from app.services.category import get_category_id_from_slug
 from app.services.product import (
     create_product,
+    delete_product,
     get_all_products,
     get_product_by_slug,
-    product_cols,
     update_product,
-    delete_product,
 )
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -38,7 +36,7 @@ async def add_product(
 
     if category_id is None:
         raise APIException(
-            status_code=status.HTTP_404_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
             message="Category not found",
         )
 
@@ -60,7 +58,9 @@ async def add_product(
 
 
 @router.get("", status_code=status.HTTP_200_OK)
-async def get_products(db: asyncpg.Connection = Depends(get_connection)) -> APIResponse:
+async def get_products(
+    db: asyncpg.Connection = Depends(get_connection),
+) -> APIResponse[list[ProductRead]]:
     products = await get_all_products(db)
 
     return APIResponse(
@@ -76,7 +76,7 @@ async def edit_product(
     product_changes: ProductUpdate,
     db: asyncpg.Connection = Depends(get_connection),
     _: dict = Depends(is_admin),
-):
+) -> APIResponse[ProductRead]:
     info = await update_product(db, product_slug, product_changes)
     return APIResponse(
         status_code=status.HTTP_200_OK, message="Product Updated", data=info
@@ -87,16 +87,16 @@ async def edit_product(
 async def get_product(
     product_slug: str,
     db: asyncpg.Connection = Depends(get_connection),
-):
+) -> APIResponse[ProductRead]:
     product = await get_product_by_slug(db, product_slug)
     return APIResponse(status_code=status.HTTP_200_OK, message="Product", data=product)
 
 
 @router.delete("/{product_slug}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_product(
-    product_slug: str, db: asyncpg.Connection = Depends(get_connection)
-):
-    info = await delete_product(db, product_slug)
-    return APIResponse(
-        status_code=status.HTTP_204_NO_CONTENT, message="Product Deleted", data=info
-    )
+    product_slug: str,
+    db: asyncpg.Connection = Depends(get_connection),
+    _: dict = Depends(is_admin),
+) -> Response:
+    await delete_product(db, product_slug)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

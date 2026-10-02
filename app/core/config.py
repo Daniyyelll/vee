@@ -1,5 +1,8 @@
+from decimal import Decimal
 from pathlib import Path
+from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.domain.enums import Currency
@@ -23,10 +26,14 @@ class Settings(BaseSettings):
 
     # Currency is chosen by the store, never by checkout input.
     payment_currency: Currency = Currency.EGP
+    shipping_fee: Decimal = Field(
+        default=Decimal("50.00"), ge=0, le=99999999, decimal_places=2
+    )
 
     # -- Security --
-    secret_jwt_key: str
-    algorithm: str
+    secret_jwt_key: str = Field(min_length=32)
+    checkout_hmac_key: str | None = Field(default=None, min_length=32)
+    algorithm: Literal["HS256"] = "HS256"
 
     # SMTP
     mail_user: str

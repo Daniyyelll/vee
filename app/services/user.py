@@ -1,9 +1,9 @@
 """User workflows implemented with parameterized PostgreSQL queries."""
 
 import secrets
-import string
 import uuid
 from datetime import datetime, timezone
+from hashlib import sha256
 from typing import Any
 
 import asyncpg
@@ -22,17 +22,19 @@ from app.schemas.user import (
     UserLogin,
     UserUpdate,
 )
-from app.services.email import send_reset_password_email
+from app.services.outbox import enqueue_email
+from app.services.rate_limit import consume_rate_limit
 
 password_hasher = PasswordHash.recommended()
 
 USER_COLUMNS = """
-    id, name, email, role::text AS role, active, address
+    id, name, email, role::text AS role, active, address, phone, token_version
 """
 
 
 def user_to_dict(row: asyncpg.Record) -> dict[str, Any]:
     """Convert PostgreSQL enum storage to the API enum's lowercase value."""
+    data = dict(row)
     return {
         "id": row["id"],
         "name": row["name"],
@@ -40,6 +42,8 @@ def user_to_dict(row: asyncpg.Record) -> dict[str, Any]:
         "role": UserRole(row["role"].lower()),
         "active": row["active"],
         "address": row["address"],
+        "phone": data.get("phone"),
+        "token_version": data.get("token_version", 0),
     }
 
 
@@ -55,14 +59,15 @@ async def register_user(
     try:
         row = await connection.fetchrow(
             f"""
-            INSERT INTO "user" (id, name, email, hashed_password, role, active)
-            VALUES ($1, $2, $3, $4, $5, TRUE)
+            INSERT INTO "user" (id, name, email, hashed_password, phone, role, active)
+            VALUES ($1, $2, $3, $4, $5, $6, TRUE)
             RETURNING {USER_COLUMNS}
             """,
             uuid.uuid4(),
             user_data.name,
             str(user_data.email),
             password_hasher.hash(user_data.password),
+            user_data.phone,
             (user_data.role or UserRole.CUSTOMER).name,
         )
     except asyncpg.UniqueViolationError as exc:
@@ -77,12 +82,19 @@ async def register_user(
 async def login_user(
     connection: asyncpg.Connection, login_data: UserLogin
 ) -> TokenData:
+    await consume_rate_limit(
+        connection,
+        "login-email",
+        str(login_data.email),
+        limit=10,
+        window_seconds=900,
+    )
     row = await connection.fetchrow(
         """
         SELECT id, name, email, hashed_password, role::text AS role, active,
-               address
+               address, phone, token_version
         FROM "user"
-        WHERE email = $1
+        WHERE lower(email) = $1
         """,
         str(login_data.email),
     )
@@ -111,6 +123,7 @@ async def login_user(
             claims={
                 "sub": str(user["id"]),
                 "role": user["role"].value,
+                "ver": user["token_version"],
                 "iat": datetime.now(timezone.utc),
             }
         ),
@@ -119,37 +132,34 @@ async def login_user(
 
 
 async def process_forgot_password(connection: asyncpg.Connection, email: str) -> bool:
+    await consume_rate_limit(
+        connection, "forgot-email", email, limit=3, window_seconds=3600
+    )
     row = await connection.fetchrow(
-        'SELECT name, email FROM "user" WHERE email = $1', email
+        'SELECT name, email FROM "user" WHERE lower(email) = $1', email.lower()
     )
     if row is None:
-        raise APIException(
-            message="User with this email does not exist.",
-            status_code=status.HTTP_404_NOT_FOUND,
-        )
+        return True
 
-    for _ in range(10):
-        code = "".join(
-            secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8)
+    token = secrets.token_urlsafe(32)
+    reset_url = f"{settings.RESET_PASSWORD_URL}{token}"
+    async with connection.transaction():
+        await connection.execute(
+            "INSERT INTO reset_code (id, email, code) VALUES ($1, $2, $3)",
+            uuid.uuid4(),
+            row["email"],
+            sha256(token.encode()).hexdigest(),
         )
-        try:
-            await connection.execute(
-                "INSERT INTO reset_code (id, email, code) VALUES ($1, $2, $3)",
-                uuid.uuid4(),
-                email,
-                code,
-            )
-            break
-        except asyncpg.UniqueViolationError:
-            continue
-    else:
-        raise APIException(
-            message="Unable to create a reset code. Please try again.",
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        await enqueue_email(
+            connection,
+            "password_reset",
+            {
+                "email": row["email"],
+                "name": row["name"],
+                "token": token,
+                "reset_url": reset_url,
+            },
         )
-
-    reset_url = f"{settings.RESET_PASSWORD_URL}{secrets.token_urlsafe(32)}"
-    await send_reset_password_email(row["email"], row["name"], code, reset_url)
     return True
 
 
@@ -165,7 +175,7 @@ async def process_reset_password(
             WHERE code = $1
             FOR UPDATE
             """,
-            reset_data.code,
+            sha256(reset_data.code.encode()).hexdigest(),
         )
         if reset_code is None or datetime.now(timezone.utc) > reset_code["expires_at"]:
             raise APIException(
@@ -174,7 +184,8 @@ async def process_reset_password(
             )
 
         updated = await connection.execute(
-            'UPDATE "user" SET hashed_password = $1 WHERE email = $2',
+            'UPDATE "user" SET hashed_password = $1, '
+            "token_version = token_version + 1 WHERE email = $2",
             password_hasher.hash(reset_data.new_password),
             reset_code["email"],
         )
@@ -184,7 +195,7 @@ async def process_reset_password(
             )
 
         await connection.execute(
-            "DELETE FROM reset_code WHERE id = $1", reset_code["id"]
+            "DELETE FROM reset_code WHERE email = $1", reset_code["email"]
         )
 
     return True
@@ -193,6 +204,7 @@ async def process_reset_password(
 PROFILE_COLUMNS = {
     "name": "name",
     "address": "address",
+    "phone": "phone",
 }
 
 
@@ -205,6 +217,8 @@ async def update_user_profile(
         raise APIException(
             "Provide at least one profile field.", status.HTTP_400_BAD_REQUEST
         )
+    if "name" in changes and changes["name"] is None:
+        raise APIException("Name cannot be null.", status.HTTP_400_BAD_REQUEST)
 
     assignments: list[str] = []
     values: list[object] = []
@@ -265,7 +279,7 @@ async def update_user_password(
     result = await db.execute(
         """
         UPDATE "user"
-        SET hashed_password = $1
+        SET hashed_password = $1, token_version = token_version + 1
         WHERE id = $2
           AND hashed_password = $3
         """,

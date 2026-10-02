@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 from app.schemas.order import OrderItemRead, OrderRead
-from app.services import email as email_service
+from app.services import email as email_service, order as order_service, outbox
 
 
 def test_order_email_uses_snapshot_and_escapes_customer_input(monkeypatch):
@@ -36,7 +36,7 @@ def test_order_email_uses_snapshot_and_escapes_customer_input(monkeypatch):
         )
     )
     message = send.await_args.args[0]
-    html = message.get_payload()[0].get_content()
+    html = message.get_body(preferencelist=("html",)).get_content()
     assert "#123" in html and "T-shirt" in html
     assert "&lt;script&gt;" in html and "<script>" not in html
     assert "Order Total" in html
@@ -60,3 +60,34 @@ def test_order_confirmation_failure_is_best_effort(monkeypatch):
     asyncio.run(
         email_service.send_order_confirmation_email("buyer@example.com", "Buyer", order)
     )
+
+
+def test_queued_order_email_uses_saved_delivery_name(monkeypatch):
+    db = AsyncMock()
+    order_id = uuid4()
+    db.fetchrow.return_value = {"id": order_id}
+    saved_order = OrderRead(
+        id=order_id,
+        order_number=123,
+        total_price=Decimal("200.00"),
+        status="pending",
+        user={
+            "name": "Changed Profile",
+            "email": "buyer@example.com",
+            "role": "customer",
+        },
+        recipient_name="Delivery Recipient",
+        recipient_phone="01012345678",
+        shipping_address="Cairo",
+        created_at=datetime.now(timezone.utc),
+    )
+    monkeypatch.setattr(
+        order_service, "_read_orders", AsyncMock(return_value=[saved_order])
+    )
+    send = AsyncMock(return_value=True)
+    monkeypatch.setattr(outbox, "send_order_confirmation_email", send)
+
+    assert asyncio.run(
+        outbox._send(db, "order_confirmation", {"order_id": str(order_id)})
+    )
+    assert send.await_args.args[1] == "Delivery Recipient"

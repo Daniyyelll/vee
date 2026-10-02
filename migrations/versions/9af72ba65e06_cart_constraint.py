@@ -5,13 +5,14 @@ Revises: f8b19136a0bf
 Create Date: 2026-09-29 03:31:17.106823
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '9af72ba65e06'
-down_revision: Union[str, Sequence[str], None] = 'f8b19136a0bf'
+revision: str = "9af72ba65e06"
+down_revision: Union[str, Sequence[str], None] = "f8b19136a0bf"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -28,9 +29,13 @@ def upgrade() -> None:
     CHECK (quantity > 0);    
     """.split(";"):
         statement = statement.strip()
-        op.execute(statement)
+        if statement:
+            op.execute(statement)
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    pass
+    op.execute(
+        "ALTER TABLE cart_item DROP CONSTRAINT check_cart_item_positive_quantity"
+    )
+    op.execute("ALTER TABLE cart_item DROP CONSTRAINT uq_cart_item_cart_product")

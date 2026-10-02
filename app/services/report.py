@@ -5,8 +5,9 @@ from uuid import UUID, uuid4
 import asyncpg
 from fastapi import status
 
+from app.core.config import settings
 from app.core.exceptions import APIException
-from app.domain.enums import OrderStatus, ReportStatus, UserRole
+from app.domain.enums import Currency, OrderStatus, ReportStatus, UserRole
 from app.schemas.report import (
     OrderStatusSummary,
     ProductSales,
@@ -122,6 +123,24 @@ async def update_report(
 async def sales_report(db: asyncpg.Connection, period: SalesPeriod) -> SalesReport:
     # All sections describe the same snapshot even if orders change mid-request.
     async with db.transaction(isolation="repeatable_read", readonly=True):
+        currencies = await db.fetch(
+            """
+            SELECT DISTINCT currency::text AS currency FROM "order"
+            WHERE ($1::timestamptz IS NULL OR created_at >= $1)
+              AND ($2::timestamptz IS NULL OR created_at < $2)
+            """,
+            period.start,
+            period.end,
+        )
+        if len(currencies) > 1 and period.currency is None:
+            raise APIException(
+                "Choose a currency for this report.", status.HTTP_409_CONFLICT
+            )
+        currency = period.currency or (
+            Currency(currencies[0]["currency"])
+            if currencies
+            else settings.payment_currency
+        )
         rows = await db.fetch(
             """
             SELECT status::text AS status, count(*) AS count,
@@ -129,10 +148,26 @@ async def sales_report(db: asyncpg.Connection, period: SalesPeriod) -> SalesRepo
             FROM "order"
             WHERE ($1::timestamptz IS NULL OR created_at >= $1)
               AND ($2::timestamptz IS NULL OR created_at < $2)
+              AND currency::text = $3
             GROUP BY status ORDER BY status::text
             """,
             period.start,
             period.end,
+            currency.value,
+        )
+        refunded = await db.fetchval(
+            """
+            SELECT COALESCE(sum(p.amount), 0) FROM payment p
+            JOIN "order" o ON o.id = p.order_id
+            WHERE o.status = 'DELIVERED'
+              AND p.payment_status = 'REFUNDED'
+              AND ($1::timestamptz IS NULL OR o.created_at >= $1)
+              AND ($2::timestamptz IS NULL OR o.created_at < $2)
+              AND o.currency::text = $3
+            """,
+            period.start,
+            period.end,
+            currency.value,
         )
         products = await db.fetch(
             """
@@ -140,13 +175,18 @@ async def sales_report(db: asyncpg.Connection, period: SalesPeriod) -> SalesRepo
                    sum(oi.quantity) AS quantity,
                    sum(oi.quantity * oi.unit_price) AS sales
             FROM order_item oi JOIN "order" o ON o.id = oi.order_id
+            LEFT JOIN payment p ON p.order_id = o.id
+                AND p.payment_status = 'REFUNDED'
             WHERE o.status = 'DELIVERED'
+              AND p.id IS NULL
               AND ($1::timestamptz IS NULL OR o.created_at >= $1)
               AND ($2::timestamptz IS NULL OR o.created_at < $2)
+              AND o.currency::text = $3
             GROUP BY oi.product_id ORDER BY sales DESC, oi.product_id LIMIT 10
             """,
             period.start,
             period.end,
+            currency.value,
         )
     indexed = {OrderStatus(row["status"].lower()): row for row in rows}
     summaries = [
@@ -163,6 +203,9 @@ async def sales_report(db: asyncpg.Connection, period: SalesPeriod) -> SalesRepo
         end=period.end,
         total_orders=sum(row.count for row in summaries),
         delivered_sales=delivered.order_value,
+        refunded_amount=refunded,
+        net_sales=delivered.order_value - refunded,
+        currency=currency,
         average_delivered_order_value=(
             (delivered.order_value / delivered.count).quantize(Decimal("0.01"))
             if delivered.count

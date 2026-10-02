@@ -10,6 +10,7 @@ dependencies = [
     "asyncpg>=0.31.0",
     "authlib>=1.8.0",
     "boto3>=1.43.88",
+    "cryptography>=50.0.1",
     "email-validator>=2.3.0",
     "fastapi[standard]>=0.141.1",
     "greenlet>=3.5.5",
