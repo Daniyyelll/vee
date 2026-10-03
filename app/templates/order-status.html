@@ -84,7 +84,8 @@
         </tbody>
     </table>
 
-    <p><strong>Shipping to:</strong><br>{{ address }}</p>
+    {% if delivery_area %}<p><strong>Area:</strong> {{ delivery_area }}</p>{% endif %}
+        <p><strong>Shipping to:</strong><br>{{ address }}</p>
 </body>
 
 </html>

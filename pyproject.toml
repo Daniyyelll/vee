@@ -8,22 +8,18 @@ dependencies = [
     "aiosmtplib>=5.1.2",
     "alembic>=1.19.2",
     "asyncpg>=0.31.0",
-    "authlib>=1.8.0",
-    "boto3>=1.43.88",
+    "cryptography>=50.0.1",
     "email-validator>=2.3.0",
-    "fastapi[standard]>=0.141.1",
+    "fastapi>=0.141.1",
     "greenlet>=3.5.5",
-    "httpx>=0.28.1",
     "jinja2>=3.1.6",
-    "passlib[argon2]>=1.7.4",
     "pillow>=11.1.0",
+    "psycopg2>=2.9.13",
     "pwdlib[argon2]>=0.3.1",
     "pydantic-settings>=2.15.0",
-    "pyjwt>=2.13.0",
+    "pyjwt>=2.15.0",
     "python-multipart>=0.0.32",
-    "ruff>=0.16.7",
-    "stripe>=15.6.1",
-    "uvicorn>=0.52.4",
+    "uvicorn[standard]>=0.52.4",
 ]
 UV_PROJECT_ENVIRONMENT=".venv"
 
@@ -48,5 +44,10 @@ pythonpath = ["."]
 
 [dependency-groups]
 dev = [
+    "bandit>=1.9.3",
+    "httpx>=0.28.1",
+    "pip-audit>=2.10.0",
     "pytest>=9.1.1",
+    "ruff>=0.16.7",
+    "urllib3>=2.8.0",
 ]

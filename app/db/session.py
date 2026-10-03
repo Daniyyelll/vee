@@ -19,7 +19,12 @@ async def connect_database() -> None:
         dsn=settings.ASYNCPG_DATABASE_URL,
         min_size=1,
         max_size=10,
-        server_settings={"timezone": "UTC"},
+        timeout=settings.database_connect_timeout,
+        command_timeout=settings.database_command_timeout,
+        server_settings={
+            "timezone": "UTC",
+            "statement_timeout": str(settings.database_statement_timeout_ms),
+        },
     )
 
 
@@ -41,5 +46,5 @@ async def get_connection(
     pool: DatabasePool = Depends(get_pool),
 ) -> AsyncIterator[asyncpg.Connection]:
     """Acquire one pooled connection for the lifetime of a request."""
-    async with pool.acquire() as connection:
+    async with pool.acquire(timeout=settings.database_acquire_timeout) as connection:
         yield connection

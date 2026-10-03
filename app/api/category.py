@@ -1,19 +1,18 @@
 import uuid
 
 import asyncpg
-from fastapi import APIRouter, Depends, status, Response
-from starlette.responses import Response
+from fastapi import APIRouter, Depends, Response, status
 
 from app.api.dependencies import is_admin
-from app.core.exceptions import APIException
 from app.db.session import get_connection
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
 from app.schemas.response import APIResponse
+from app.services.audit import record_audit
 from app.services.category import (
     create_category,
+    delete_category,
     get_all_categories,
     update_category,
-    delete_category,
 )
 
 router = APIRouter(prefix="/categories", tags=["categories"])
@@ -37,7 +36,11 @@ async def add_category(
     db: asyncpg.Connection = Depends(get_connection),
     admin=Depends(is_admin),
 ) -> APIResponse:
-    category_data = await create_category(db, body_data)
+    async with db.transaction():
+        category_data = await create_category(db, body_data)
+        await record_audit(
+            db, admin, "category.created", "category", category_data["id"]
+        )
 
     return APIResponse(
         status_code=status.HTTP_201_CREATED,
@@ -55,9 +58,11 @@ async def edit_category(
     category_id: uuid.UUID,
     body_data: CategoryUpdate,
     db: asyncpg.Connection = Depends(get_connection),
-    _: dict = Depends(is_admin),
+    admin: dict = Depends(is_admin),
 ) -> APIResponse[CategoryRead]:
-    category = await update_category(db, category_id, body_data)
+    async with db.transaction():
+        category = await update_category(db, category_id, body_data)
+        await record_audit(db, admin, "category.updated", "category", category_id)
 
     return APIResponse(
         status_code=status.HTTP_200_OK,
@@ -72,5 +77,7 @@ async def remove_category(
     db: asyncpg.Connection = Depends(get_connection),
     admin=Depends(is_admin),
 ) -> Response:
-    await delete_category(db=db, category_id=category_id)
+    async with db.transaction():
+        await delete_category(db=db, category_id=category_id)
+        await record_audit(db, admin, "category.deleted", "category", category_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -101,7 +101,7 @@ async def _change_quantity(
 
         product = await db.fetchrow(
             """
-            SELECT stock_quantity
+            SELECT stock_quantity, active
             FROM product
             WHERE id = $1
             FOR SHARE""",
@@ -113,6 +113,9 @@ async def _change_quantity(
                 message="Product not found.",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
+
+        if not product["active"]:
+            raise APIException("Product is unavailable.", status.HTTP_409_CONFLICT)
 
         if increase:
             new_quantity = (existing_quantity or 0) + quantity

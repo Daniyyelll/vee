@@ -45,6 +45,7 @@ async def cart_database(database_url):
                 product_name VARCHAR NOT NULL,
                 price NUMERIC(6, 2) NOT NULL,
                 image_url VARCHAR,
+                active BOOLEAN NOT NULL DEFAULT TRUE,
                 stock_quantity INTEGER NOT NULL CHECK (stock_quantity >= 0)
             );
             CREATE TABLE cart_item (

@@ -30,7 +30,8 @@ async def get_current_user(
 
     row = await db.fetchrow(
         """
-        SELECT id, name, email, role::text AS role, active, address
+        SELECT id, name, email, role::text AS role, active, address, phone,
+               token_version
         FROM "user"
         WHERE id = $1
         """,
@@ -42,6 +43,9 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             message="Could not validate credentials",
         )
+
+    if payload.get("ver") != dict(row).get("token_version", 0):
+        raise APIException("Credentials have expired", status.HTTP_401_UNAUTHORIZED)
 
     return user_to_dict(row)
 

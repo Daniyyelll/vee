@@ -5,7 +5,7 @@ from uuid import UUID
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
-from app.domain.enums import OrderStatus, ReportStatus
+from app.domain.enums import Currency, OrderStatus, ReportStatus
 
 
 class ReportModel(BaseModel):
@@ -51,6 +51,7 @@ class ReportRead(ReportModel):
 class SalesPeriod(ReportModel):
     start: AwareDatetime | None = None
     end: AwareDatetime | None = None
+    currency: Currency | None = None
 
     @model_validator(mode="after")
     def chronological(self):
@@ -77,6 +78,9 @@ class SalesReport(ReportModel):
     end: datetime | None
     total_orders: int
     delivered_sales: Decimal
+    refunded_amount: Decimal = Decimal("0.00")
+    net_sales: Decimal = Decimal("0.00")
+    currency: Currency = Currency.EGP
     average_delivered_order_value: Decimal
     orders_by_status: list[OrderStatusSummary]
     top_products: list[ProductSales]

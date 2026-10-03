@@ -12,4 +12,5 @@ async def api_exception_handler(request: Request, exc: APIException) -> JSONResp
     return JSONResponse(
         status_code=exc.status_code,
         content={"message": exc.message, "status_code": exc.status_code},
+        headers={"Cache-Control": "no-store"},
     )

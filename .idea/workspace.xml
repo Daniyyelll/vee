@@ -5,32 +5,36 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e36c8ac7-5fff-4da6-b164-f21cab3b6ffc" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/ci.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/ci.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/api.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/category.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/category.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/coupon.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/coupon.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/order.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/order.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/product.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/product.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/report.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/report.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/review.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/review.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/core/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/security.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/security.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/db/session.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/db/session.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/cart.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/cart_item.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/category.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/notification.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/order.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/order_item.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/payment.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/product.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/reset_code.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/review.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/user.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/schemas/cart.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/cart.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/schemas/category.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/category.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/schemas/notification.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/notification.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/schemas/order.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/order.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/schemas/product.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/product.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/schemas/review.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/review.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/schemas/user.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/user.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/order.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/order.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/outbox.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/outbox.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/payment.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/payment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/product.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/product.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/refresh_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/refresh_session.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/migrations/versions/95d8e6f1a911_merge_heads.py" beforeDir="false" afterPath="$PROJECT_DIR$/migrations/versions/95d8e6f1a911_merge_heads.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/api/test_commerce.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/api/test_commerce.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/services/test_commerce.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/services/test_commerce.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/services/test_order_history.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/services/test_order_history.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/services/test_payment.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/services/test_payment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/services/test_refresh_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/services/test_refresh_session.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/uv.lock" beforeDir="false" afterPath="$PROJECT_DIR$/uv.lock" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -39,7 +43,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="1693" />
+    <option name="cachedIndexableFilesCount" value="7637" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -57,61 +61,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0" />
-      <entry key="MS500" value="1.0003174674903033" />
-      <entry key="S2" value="1.2031003306800225" />
-      <entry key="S5" value="2.169467132727357" />
-      <entry key="S10" value="3.464437858405221" />
-      <entry key="S30" value="7.624515053080252" />
-      <entry key="S60" value="14.454795409748762" />
-      <entry key="M2" value="26.279857731669296" />
-      <entry key="M5" value="49.234700830375196" />
-      <entry key="M10" value="86.8556127608267" />
-      <entry key="M15" value="123.35780791994262" />
-      <entry key="M30" value="207.46479250367264" />
-      <entry key="H1" value="341.24417365401524" />
-      <entry key="H2" value="579.484194420722" />
-      <entry key="H4" value="978.2696965139874" />
-      <entry key="D1" value="3163.859994681863" />
-      <entry key="W1" value="4794.630453024794" />
+      <entry key="MS100" value="1.0000000193918068" />
+      <entry key="MS500" value="1.033974195927057" />
+      <entry key="S2" value="1.9091084115270611" />
+      <entry key="S5" value="3.4426685651509903" />
+      <entry key="S10" value="5.142805703018834" />
+      <entry key="S30" value="9.741301090084423" />
+      <entry key="S60" value="16.665588422596688" />
+      <entry key="M2" value="28.585135103846635" />
+      <entry key="M5" value="51.72375099499355" />
+      <entry key="M10" value="89.40974521329657" />
+      <entry key="M15" value="125.93747131178185" />
+      <entry key="M30" value="210.11280431852674" />
+      <entry key="H1" value="343.9554102287746" />
+      <entry key="H2" value="582.2394149002673" />
+      <entry key="H4" value="981.0632834525744" />
+      <entry key="D1" value="3166.74884460872" />
+      <entry key="W1" value="4797.606393664" />
     </decayedCancelled>
     <decayedSelected>
-      <entry key="MS100" value="3.95952170188075E-65" />
-      <entry key="MS500" value="1.316826462919656E-13" />
-      <entry key="S2" value="6.02396079008545E-4" />
-      <entry key="S5" value="0.05151738610510905" />
-      <entry key="S10" value="0.22745267403337613" />
-      <entry key="S30" value="0.7719955028997303" />
-      <entry key="S60" value="1.7280724891465054" />
-      <entry key="M2" value="3.72957211881051" />
-      <entry key="M5" value="7.345042657382703" />
-      <entry key="M10" value="10.609286964193037" />
-      <entry key="M15" value="12.985243845487663" />
-      <entry key="M30" value="17.70247167560344" />
-      <entry key="H1" value="24.482944846807115" />
-      <entry key="H2" value="38.537667904435565" />
-      <entry key="H4" value="68.43926979583324" />
-      <entry key="D1" value="304.6412649304674" />
-      <entry key="W1" value="507.6918570431937" />
+      <entry key="MS100" value="2.639731880099037E-78" />
+      <entry key="MS500" value="3.0500851476258834E-16" />
+      <entry key="S2" value="1.3215329345807265E-4" />
+      <entry key="S5" value="0.028082266820057" />
+      <entry key="S10" value="0.16793074622978513" />
+      <entry key="S30" value="0.697741402857701" />
+      <entry key="S60" value="1.642864775759722" />
+      <entry key="M2" value="3.6364610518266938" />
+      <entry key="M5" value="7.271136450706074" />
+      <entry key="M10" value="10.555776414839846" />
+      <entry key="M15" value="12.94154421056784" />
+      <entry key="M30" value="17.6726592398934" />
+      <entry key="H1" value="24.46232050142902" />
+      <entry key="H2" value="38.52143248758523" />
+      <entry key="H4" value="68.42485199130124" />
+      <entry key="D1" value="304.63056774883046" />
+      <entry key="W1" value="507.6893102754912" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.7120250977985358" />
-      <entry key="MS500" value="0.934407213174093" />
-      <entry key="S2" value="1.1394819956029014" />
-      <entry key="S5" value="2.1057211581822273" />
-      <entry key="S10" value="3.558240481917445" />
-      <entry key="S30" value="8.267141157884492" />
-      <entry key="S60" value="16.050955226599303" />
-      <entry key="M2" value="29.882296945799276" />
-      <entry key="M5" value="56.48388780371179" />
-      <entry key="M10" value="97.38879284115514" />
-      <entry key="M15" value="136.27601997785365" />
-      <entry key="M30" value="225.11611368350202" />
-      <entry key="H1" value="365.68808822847075" />
-      <entry key="H2" value="617.9893241074341" />
-      <entry key="H4" value="1046.6804608217537" />
-      <entry key="D1" value="3468.4845609507115" />
-      <entry key="W1" value="5302.318672891678" />
+      <entry key="MS100" value="0.9330330101384963" />
+      <entry key="MS500" value="1.0191519676714114" />
+      <entry key="S2" value="1.8765539006590923" />
+      <entry key="S5" value="3.3920240341603796" />
+      <entry key="S10" value="5.201647138516072" />
+      <entry key="S30" value="10.317946137659675" />
+      <entry key="S60" value="18.18086108382573" />
+      <entry key="M2" value="32.096519727549754" />
+      <entry key="M5" value="58.899543015295095" />
+      <entry key="M10" value="99.88957092855124" />
+      <entry key="M15" value="138.8120572975766" />
+      <entry key="M30" value="227.73432307601382" />
+      <entry key="H1" value="368.3786952431977" />
+      <entry key="H2" value="620.7283038238794" />
+      <entry key="H4" value="1049.4596264320057" />
+      <entry key="D1" value="3471.3627126938773" />
+      <entry key="W1" value="5305.292066554503" />
     </decayedShown>
   </component>
   <component name="ProblemsViewState">
@@ -136,7 +140,7 @@
     &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
     &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
     &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;dev-backend&quot;,
     &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
     &quot;last_opened_file_path&quot;: &quot;//wsl.localhost/Ubuntu/home/linux_elite_user/projects/vee&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
@@ -195,7 +199,9 @@
       <workItem from="1789918912190" duration="11174000" />
       <workItem from="1790534308166" duration="4453000" />
       <workItem from="1790550573881" duration="15380000" />
-      <workItem from="1790639289720" duration="10108000" />
+      <workItem from="1790639289720" duration="11259000" />
+      <workItem from="1790897525182" duration="1227000" />
+      <workItem from="1791067499200" duration="1554000" />
     </task>
     <servers />
   </component>

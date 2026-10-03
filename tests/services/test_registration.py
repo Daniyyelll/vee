@@ -12,7 +12,10 @@ from app.services.user import register_user
 def test_public_registration_rejects_privileged_roles(role):
     db = AsyncMock()
     request = UserCreate(
-        name="Attacker", email="attacker@example.com", password="secret", role=role
+        name="Attacker",
+        email="attacker@example.com",
+        password="long-secret-password",
+        role=role,
     )
     with pytest.raises(APIException) as error:
         asyncio.run(register_user(db, request))

@@ -13,7 +13,8 @@ from app.services.upload import delete_uploaded_file, upload_file
 from app.utils.slugify import slugify
 
 product_cols = """
-    product_name, description, price, stock_quantity, image_url
+    id, product_slug, category_id, product_name, description,
+    price, stock_quantity, image_url, active, currency::text AS currency
 """
 
 
@@ -40,11 +41,12 @@ async def create_product(
             """
             INSERT INTO product (
                 id, product_name, description, price, stock_quantity,
-                image_url, created_at, category_id, product_slug
+                image_url, created_at, category_id, product_slug, currency
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING id, product_name, description, price, stock_quantity,
-                      image_url, created_at, category_id, product_slug
+                      image_url, created_at, category_id, product_slug,
+                      active, currency::text AS currency
     """,
             uuid.uuid4(),
             product.product_name,
@@ -55,6 +57,7 @@ async def create_product(
             datetime.now(timezone.utc),
             product.category_id,
             slugify(product.product_name),
+            settings.payment_currency.value,
         )
 
     except asyncpg.ForeignKeyViolationError as exc:
@@ -76,42 +79,53 @@ async def create_product(
 
 
 async def get_all_products(
-    db: asyncpg.Connection, category_slug: str | None = None
+    db: asyncpg.Connection,
+    category_slug: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
 ) -> list[ProductRead]:
     if category_slug is not None:
-        category_id = get_category_id_from_slug(category_slug)
+        category_id = await get_category_id_from_slug(db, category_slug)
 
         rows = await db.fetch(
             f"""
             SELECT {product_cols} FROM product
-            WHERE category_id = $1;
+            WHERE category_id = $1 AND active = TRUE
+            ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3
             """,
             category_id,
+            limit,
+            offset,
         )
 
     else:
         rows = await db.fetch(
             f"""
-            SELECT {product_cols} FROM product;
-            """
+            SELECT {product_cols} FROM product WHERE active = TRUE
+            ORDER BY created_at DESC, id DESC LIMIT $1 OFFSET $2
+            """,
+            limit,
+            offset,
         )
 
-    return [dict(product) for product in rows]
+    return [ProductRead.model_validate(dict(product)) for product in rows]
 
 
 async def get_product_by_slug(db: asyncpg.Connection, product_slug: str) -> ProductRead:
     product_id = await get_product_id_by_slug(db, product_slug)
 
     product = await db.fetchrow(
-        """
-        SELECT product_name, description, price, stock_quantity, image_url
+        f"""
+        SELECT {product_cols}
         FROM product
-        WHERE id = $1;
+        WHERE id = $1 AND active = TRUE;
         """,
         product_id,
     )
 
-    return dict(product)
+    if product is None:
+        raise APIException("Product not found.", status.HTTP_404_NOT_FOUND)
+    return ProductRead.model_validate(dict(product))
 
 
 async def update_product(
@@ -131,7 +145,7 @@ async def update_product(
 
     if not assignments:
         raise APIException(
-            "Provide at least one profile field.", status.HTTP_400_BAD_REQUEST
+            "Provide at least one product field.", status.HTTP_400_BAD_REQUEST
         )
 
     if product_name:
@@ -142,19 +156,29 @@ async def update_product(
     product_id = await get_product_id_by_slug(db, product_slug)
     values.append(product_id)
 
-    row = await db.fetchrow(
-        f"""
-        UPDATE product
-        SET {", ".join(assignments)}
-        WHERE id = ${len(values)}
-        RETURNING {product_cols}
-        """,
-        *values,
-    )
+    try:
+        row = await db.fetchrow(
+            f"""
+            UPDATE product
+            SET {", ".join(assignments)}
+            WHERE id = ${len(values)}
+            RETURNING {product_cols}
+            """,
+            *values,
+        )
+    except asyncpg.UniqueViolationError as exc:
+        raise APIException(
+            "Product name or slug already exists.", status.HTTP_409_CONFLICT
+        ) from exc
+    except asyncpg.ForeignKeyViolationError as exc:
+        raise APIException(
+            "The selected category does not exist.",
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+        ) from exc
     if row is None:
         raise APIException("Product not found.", status.HTTP_404_NOT_FOUND)
 
-    return dict(row)
+    return ProductRead.model_validate(dict(row))
 
 
 async def delete_product(db: asyncpg.Connection, product_slug: str):
@@ -162,7 +186,7 @@ async def delete_product(db: asyncpg.Connection, product_slug: str):
 
     info = await db.execute(
         """
-        DELETE FROM product WHERE id = $1;""",
+        UPDATE product SET active = FALSE WHERE id = $1;""",
         product_id,
     )
     return info

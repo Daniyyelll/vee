@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
 
@@ -10,10 +10,11 @@ class CategoryCreate(BaseModel):
         alias_generator=to_camel,  # Convert Python fields from snake_case to camelCase
         validate_by_name=True,
         validate_by_alias=True,
+        str_strip_whitespace=True,
     )
 
-    category_name: str
-    description: str | None
+    category_name: str = Field(min_length=1, max_length=200)
+    description: str | None = None
 
 
 class CategoryUpdate(BaseModel):
@@ -22,9 +23,10 @@ class CategoryUpdate(BaseModel):
         alias_generator=to_camel,  # Convert Python fields from snake_case to camelCase
         validate_by_name=True,
         validate_by_alias=True,
+        str_strip_whitespace=True,
     )
 
-    category_name: str | None = Field(default=None, min_length=1, max_length=255)
+    category_name: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
 
     @model_validator(mode="after")
@@ -48,3 +50,4 @@ class CategoryRead(BaseModel):
     id: UUID
     category_name: str
     description: str | None
+    slug: str | None = None
