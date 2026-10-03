@@ -3,10 +3,11 @@ from typing import Any
 import asyncpg
 from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response, status
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, is_admin
 from app.db.session import get_connection
 from app.domain.enums import OrderStatus
 from app.schemas.order import (
+    AssignOrderDelivery,
     CartQuoteRequest,
     CheckoutRequest,
     GuestCheckoutRequest,
@@ -19,6 +20,7 @@ from app.schemas.order import (
 )
 from app.schemas.response import APIResponse
 from app.services.order import (
+    assign_order_delivery,
     checkout,
     get_order,
     get_order_receipt,
@@ -121,7 +123,7 @@ async def show_receipt(
 async def show_orders(
     order_status: OrderStatus | None = Query(default=None, alias="status"),
     limit: int = Query(default=50, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=10000),
     user: dict[str, Any] = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_connection),
 ) -> APIResponse[list[OrderRead]]:
@@ -133,7 +135,7 @@ async def show_orders(
 async def show_my_orders(
     response: Response,
     limit: int = Query(default=10, ge=1, le=50),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=10000),
     user: dict[str, Any] = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_connection),
 ) -> APIResponse[list[OrderRead]]:
@@ -161,3 +163,20 @@ async def change_order_status(
 ) -> APIResponse[OrderRead]:
     order = await update_order_status(db, user, order_number, request.status)
     return APIResponse(status_code=200, message="Order status updated", data=order)
+
+
+@router.patch("/{order_number}/delivery-assignment")
+async def change_delivery_assignment(
+    request: AssignOrderDelivery,
+    order_number: int = Path(gt=0),
+    admin: dict[str, Any] = Depends(is_admin),
+    db: asyncpg.Connection = Depends(get_connection),
+) -> APIResponse[OrderRead]:
+    order = await assign_order_delivery(
+        db, admin, order_number, request.delivery_user_id
+    )
+    return APIResponse(
+        status_code=200,
+        message="Delivery assignment updated",
+        data=order,
+    )

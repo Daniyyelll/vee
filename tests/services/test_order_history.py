@@ -18,9 +18,10 @@ def test_profile_order_history_filters_to_owner_even_for_staff():
         db = Database()
         user = {"id": uuid4(), "role": UserRole.ADMIN}
         assert await list_orders(db, user, limit=10, mine_only=True) == []
-        assert db.arguments == (False, user["id"], None, 10, 0)
+        assert db.arguments == ("admin", user["id"], None, 10, 0, True)
 
         assert await list_orders(db, user) == []
-        assert db.arguments[0] is True
+        assert db.arguments[0] == "admin"
+        assert db.arguments[-1] is False
 
     asyncio.run(scenario())

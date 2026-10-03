@@ -1,13 +1,14 @@
 from decimal import Decimal
 
 import asyncpg
-from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile, status
 
 from app.api.dependencies import is_admin
 from app.core.exceptions import APIException
 from app.db.session import get_connection
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.schemas.response import APIResponse
+from app.services.audit import record_audit
 from app.services.category import get_category_id_from_slug
 from app.services.product import (
     create_product,
@@ -29,7 +30,7 @@ async def add_product(
     description: str | None = Form(default=None),
     image_file: UploadFile = File(alias="imageFile"),
     db: asyncpg.Connection = Depends(get_connection),
-    _: dict = Depends(is_admin),
+    admin: dict = Depends(is_admin),
 ) -> APIResponse[dict]:
 
     category_id = await get_category_id_from_slug(db, category_slug)
@@ -48,7 +49,11 @@ async def add_product(
         category_id=category_id,
     )
 
-    created_product = await create_product(db, product, image_file)
+    async with db.transaction():
+        created_product = await create_product(db, product, image_file)
+        await record_audit(
+            db, admin, "product.created", "product", created_product["id"]
+        )
 
     return APIResponse(
         status_code=status.HTTP_201_CREATED,
@@ -59,9 +64,12 @@ async def add_product(
 
 @router.get("", status_code=status.HTTP_200_OK)
 async def get_products(
+    category_slug: str | None = Query(default=None, alias="categorySlug"),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10000),
     db: asyncpg.Connection = Depends(get_connection),
 ) -> APIResponse[list[ProductRead]]:
-    products = await get_all_products(db)
+    products = await get_all_products(db, category_slug, limit, offset)
 
     return APIResponse(
         status_code=status.HTTP_200_OK,
@@ -75,9 +83,11 @@ async def edit_product(
     product_slug: str,
     product_changes: ProductUpdate,
     db: asyncpg.Connection = Depends(get_connection),
-    _: dict = Depends(is_admin),
+    admin: dict = Depends(is_admin),
 ) -> APIResponse[ProductRead]:
-    info = await update_product(db, product_slug, product_changes)
+    async with db.transaction():
+        info = await update_product(db, product_slug, product_changes)
+        await record_audit(db, admin, "product.updated", "product", info.id)
     return APIResponse(
         status_code=status.HTTP_200_OK, message="Product Updated", data=info
     )
@@ -96,7 +106,9 @@ async def get_product(
 async def remove_product(
     product_slug: str,
     db: asyncpg.Connection = Depends(get_connection),
-    _: dict = Depends(is_admin),
+    admin: dict = Depends(is_admin),
 ) -> Response:
-    await delete_product(db, product_slug)
+    async with db.transaction():
+        await delete_product(db, product_slug)
+        await record_audit(db, admin, "product.deactivated", "product", product_slug)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -79,7 +79,10 @@ async def create_product(
 
 
 async def get_all_products(
-    db: asyncpg.Connection, category_slug: str | None = None
+    db: asyncpg.Connection,
+    category_slug: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
 ) -> list[ProductRead]:
     if category_slug is not None:
         category_id = await get_category_id_from_slug(db, category_slug)
@@ -87,16 +90,22 @@ async def get_all_products(
         rows = await db.fetch(
             f"""
             SELECT {product_cols} FROM product
-            WHERE category_id = $1 AND active = TRUE;
+            WHERE category_id = $1 AND active = TRUE
+            ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3
             """,
             category_id,
+            limit,
+            offset,
         )
 
     else:
         rows = await db.fetch(
             f"""
-            SELECT {product_cols} FROM product WHERE active = TRUE;
-            """
+            SELECT {product_cols} FROM product WHERE active = TRUE
+            ORDER BY created_at DESC, id DESC LIMIT $1 OFFSET $2
+            """,
+            limit,
+            offset,
         )
 
     return [ProductRead.model_validate(dict(product)) for product in rows]

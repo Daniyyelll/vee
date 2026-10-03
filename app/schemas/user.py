@@ -52,7 +52,8 @@ class UserLogin(BaseModel):
     )
 
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=128)
+    mfa_code: str | None = Field(default=None, pattern=r"^\d{6}$")
 
     @field_validator("email")
     @classmethod
@@ -94,8 +95,41 @@ class PasswordUpdate(BaseModel):
         validate_by_alias=True,
     )
 
-    old_password: str
+    old_password: str = Field(min_length=1, max_length=128)
     new_password: str = Field(min_length=12, max_length=128)
+
+
+class StaffMFAEnrollRequest(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel, validate_by_name=True, validate_by_alias=True
+    )
+
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> EmailStr:
+        return value.lower()
+
+
+class StaffMFAEnrollment(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel, validate_by_name=True, validate_by_alias=True
+    )
+
+    secret: str
+    provisioning_uri: str
+    enrollment_token: str
+
+
+class StaffMFAVerifyRequest(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel, validate_by_name=True, validate_by_alias=True
+    )
+
+    enrollment_token: str = Field(min_length=32, max_length=4096)
+    code: str = Field(pattern=r"^\d{6}$")
 
 
 class ForgotPasswordRequest(BaseModel):

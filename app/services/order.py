@@ -22,6 +22,7 @@ from app.schemas.order import (
     OrderReceiptRead,
     QuoteItemRead,
 )
+from app.services.audit import record_audit
 from app.services.cart import _lock_cart
 from app.services.coupon import redeem_coupon
 from app.services.outbox import enqueue_email
@@ -36,6 +37,7 @@ ORDER_COLUMNS = """
     o.id, o.order_number, o.total_price, o.status::text AS status,
     o.shipping_address, o.delivery_area, o.created_at, o.guest_name, o.guest_email,
     o.guest_phone, o.recipient_name, o.recipient_phone,
+    o.delivery_user_id,
     o.subtotal_price, o.discount_amount, o.shipping_fee,
     o.coupon_code, o.currency::text AS currency, o.expires_at,
     u.id AS user_id, u.name, u.email, u.role::text AS role, u.active,
@@ -126,10 +128,15 @@ async def get_order(
         f"""
         SELECT {ORDER_COLUMNS}
         FROM "order" o LEFT JOIN "user" u ON u.id = o.user_id
-        WHERE o.order_number = $1 AND ($2::boolean OR o.user_id = $3)
+        WHERE o.order_number = $1
+          AND (
+              $2::text = 'admin'
+              OR ($2::text = 'delivery' AND o.delivery_user_id = $3)
+              OR ($2::text = 'customer' AND o.user_id = $3)
+          )
         """,
         order_number,
-        user["role"] in (UserRole.ADMIN, UserRole.DELIVERY),
+        user["role"].value,
         user["id"],
     )
     if row is None:
@@ -150,15 +157,21 @@ async def list_orders(
         f"""
         SELECT {ORDER_COLUMNS}
         FROM "order" o LEFT JOIN "user" u ON u.id = o.user_id
-        WHERE ($1::boolean OR o.user_id = $2)
+        WHERE (
+              ($1::text = 'admin' AND NOT $6::boolean)
+              OR ($1::text = 'delivery' AND NOT $6::boolean
+                  AND o.delivery_user_id = $2)
+              OR ($1::text = 'customer' AND o.user_id = $2)
+          )
           AND ($3::text IS NULL OR o.status::text = $3)
         ORDER BY o.created_at DESC, o.order_number DESC LIMIT $4 OFFSET $5
         """,
-        not mine_only and user["role"] in (UserRole.ADMIN, UserRole.DELIVERY),
+        user["role"].value,
         user["id"],
         order_status.name if order_status else None,
         limit,
         offset,
+        mine_only,
     )
     return await _read_orders(db, rows)
 
@@ -481,13 +494,18 @@ async def update_order_status(
     async with db.transaction():
         row = await db.fetchrow(
             """
-            SELECT id, user_id, status::text AS status FROM "order"
+            SELECT id, user_id, delivery_user_id, status::text AS status FROM "order"
             WHERE order_number = $1 FOR UPDATE
             """,
             order_number,
         )
-        if row is None or (
-            user["role"] == UserRole.CUSTOMER and row["user_id"] != user["id"]
+        if (
+            row is None
+            or (user["role"] == UserRole.CUSTOMER and row["user_id"] != user["id"])
+            or (
+                user["role"] == UserRole.DELIVERY
+                and row["delivery_user_id"] != user["id"]
+            )
         ):
             raise APIException("Order not found.", status.HTTP_404_NOT_FOUND)
         current = OrderStatus(row["status"].lower())
@@ -564,7 +582,75 @@ async def update_order_status(
         await enqueue_email(
             db, "order_status", {"order_id": str(row["id"]), "status": new_status.value}
         )
+        await record_audit(
+            db,
+            user,
+            "order.status_changed",
+            "order",
+            row["id"],
+            details={"from": current.value, "to": new_status.value},
+        )
         result = await get_order(db, user, order_number)
+    return result
+
+
+async def assign_order_delivery(
+    db: asyncpg.Connection,
+    admin: dict[str, Any],
+    order_number: int,
+    delivery_user_id: UUID | None,
+) -> OrderRead:
+    """Assign a non-terminal order to one active delivery account."""
+    if admin["role"] != UserRole.ADMIN:
+        raise APIException("Administrator access required.", status.HTTP_403_FORBIDDEN)
+
+    async with db.transaction():
+        order = await db.fetchrow(
+            """
+            SELECT id, status::text AS status, delivery_user_id
+            FROM "order" WHERE order_number = $1 FOR UPDATE
+            """,
+            order_number,
+        )
+        if order is None:
+            raise APIException("Order not found.", status.HTTP_404_NOT_FOUND)
+        if order["status"] in ("DELIVERED", "CANCELLED"):
+            raise APIException(
+                "Terminal orders cannot be reassigned.", status.HTTP_409_CONFLICT
+            )
+
+        if delivery_user_id is not None:
+            eligible = await db.fetchval(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM "user"
+                    WHERE id = $1 AND role = 'DELIVERY' AND active = TRUE
+                )
+                """,
+                delivery_user_id,
+            )
+            if not eligible:
+                raise APIException(
+                    "Active delivery account not found.", status.HTTP_404_NOT_FOUND
+                )
+
+        await db.execute(
+            'UPDATE "order" SET delivery_user_id = $2 WHERE id = $1',
+            order["id"],
+            delivery_user_id,
+        )
+        await record_audit(
+            db,
+            admin,
+            "order.delivery_assigned",
+            "order",
+            order["id"],
+            details={
+                "from": order["delivery_user_id"],
+                "to": delivery_user_id,
+            },
+        )
+        result = await get_order(db, admin, order_number)
     return result
 
 

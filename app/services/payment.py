@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.core.exceptions import APIException
 from app.domain.enums import Currency, PaymentMethod, PaymentStatus, UserRole
 from app.schemas.payment import CashRefundRequest, PaymentRead
+from app.services.audit import record_audit
 
 PAYMENT_COLUMNS = """
     p.id, p.order_id, o.order_number, p.amount, p.currency::text AS currency,
@@ -51,10 +52,15 @@ async def get_payment(
         f"""
         SELECT {PAYMENT_COLUMNS} FROM payment p
         JOIN "order" o ON o.id = p.order_id
-        WHERE o.order_number = $1 AND ($2::boolean OR o.user_id = $3)
+        WHERE o.order_number = $1
+          AND (
+              $2::text = 'admin'
+              OR ($2::text = 'delivery' AND o.delivery_user_id = $3)
+              OR ($2::text = 'customer' AND o.user_id = $3)
+          )
         """,
         order_number,
-        user["role"] in (UserRole.ADMIN, UserRole.DELIVERY),
+        user["role"].value,
         user["id"],
     )
     if row is None:
@@ -62,13 +68,21 @@ async def get_payment(
     return payment_to_schema(row)
 
 
-async def _lock_order(db, order_number: int):
+async def _lock_order(db, user: dict[str, Any], order_number: int):
     row = await db.fetchrow(
         """
         SELECT id, status::text AS status, total_price FROM "order"
-        WHERE order_number = $1 FOR UPDATE
+        WHERE order_number = $1
+          AND (
+              $2::text = 'admin'
+              OR ($2::text = 'delivery' AND delivery_user_id = $3)
+              OR ($2::text = 'customer' AND user_id = $3)
+          )
+        FOR UPDATE
         """,
         order_number,
+        user["role"].value,
+        user["id"],
     )
     if row is None:
         raise APIException("Order not found.", status.HTTP_404_NOT_FOUND)
@@ -88,7 +102,7 @@ async def create_cash_payment(
     """Explicit staff action for orders placed before automatic cash checkout."""
     _require_collector(user)
     async with db.transaction():
-        order = await _lock_order(db, order_number)
+        order = await _lock_order(db, user, order_number)
         if order["status"] == "CANCELLED":
             raise APIException(
                 "Cancelled orders cannot accept cash.", status.HTTP_409_CONFLICT
@@ -96,6 +110,7 @@ async def create_cash_payment(
         if order["total_price"] is None or order["total_price"] <= 0:
             raise APIException("Order amount is invalid.", status.HTTP_409_CONFLICT)
         await insert_cash_payment(db, order["id"], order["total_price"])
+        await record_audit(db, user, "payment.cash_created", "order", order["id"])
         payment = await get_payment(db, user, order_number)
     return payment
 
@@ -105,7 +120,7 @@ async def collect_cash(
 ) -> PaymentRead:
     _require_collector(user)
     async with db.transaction():
-        order = await _lock_order(db, order_number)
+        order = await _lock_order(db, user, order_number)
         if order["status"] not in ("SHIPPED", "DELIVERED"):
             raise APIException(
                 "Collect cash when the order is shipped or delivered.",
@@ -138,6 +153,14 @@ async def collect_cash(
             row["id"],
             user["id"],
         )
+        await record_audit(
+            db,
+            user,
+            "payment.cash_collected",
+            "payment",
+            row["id"],
+            details={"order_id": order["id"]},
+        )
         payment = await get_payment(db, user, order_number)
     return payment
 
@@ -153,7 +176,7 @@ async def refund_cash(
             "Cash refunds require administrator access.", status.HTTP_403_FORBIDDEN
         )
     async with db.transaction():
-        order = await _lock_order(db, order_number)
+        order = await _lock_order(db, user, order_number)
         if order["status"] != "DELIVERED":
             raise APIException(
                 "Refunds require a delivered order.", status.HTTP_409_CONFLICT
@@ -195,6 +218,14 @@ async def refund_cash(
             row["id"],
             user["id"],
             request.reason,
+        )
+        await record_audit(
+            db,
+            user,
+            "payment.cash_refunded",
+            "payment",
+            row["id"],
+            details={"order_id": order["id"], "reason": request.reason},
         )
         payment = await get_payment(db, user, order_number)
     return payment

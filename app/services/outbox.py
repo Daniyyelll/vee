@@ -75,43 +75,56 @@ async def _send(db: asyncpg.Connection, kind: str, payload: dict) -> bool:
 
 async def process_email_outbox(db: asyncpg.Connection) -> int:
     processed = 0
+    claim_token = uuid4()
     async with db.transaction():
         rows = await db.fetch(
             """
-            SELECT id, kind, payload, attempts FROM email_outbox
-            WHERE sent_at IS NULL AND next_attempt_at <= NOW()
-            ORDER BY created_at LIMIT 10 FOR UPDATE SKIP LOCKED
-            """
+            WITH due AS (
+                SELECT id FROM email_outbox
+                WHERE sent_at IS NULL AND next_attempt_at <= NOW()
+                  AND (claimed_at IS NULL OR claimed_at < NOW() - INTERVAL '5 minutes')
+                ORDER BY created_at LIMIT 10 FOR UPDATE SKIP LOCKED
+            )
+            UPDATE email_outbox AS outbox
+            SET claim_token = $1, claimed_at = NOW()
+            FROM due WHERE outbox.id = due.id
+            RETURNING outbox.id, outbox.kind, outbox.payload, outbox.attempts
+            """,
+            claim_token,
         )
-        for row in rows:
-            try:
-                payload = row["payload"]
-                if isinstance(payload, str):
-                    payload = json.loads(payload)
-                sent = await _send(db, row["kind"], payload)
-            except Exception:
-                sent = False
-                logger.exception(
-                    "Email outbox delivery failed", extra={"email_id": str(row["id"])}
-                )
-            if sent:
-                await db.execute(
-                    "UPDATE email_outbox SET sent_at = NOW(), payload = '{}'::jsonb "
-                    "WHERE id = $1",
-                    row["id"],
-                )
-                processed += 1
-            else:
-                await db.execute(
-                    """
-                    UPDATE email_outbox SET attempts = attempts + 1,
-                        next_attempt_at = NOW() +
-                            LEAST(3600, 10 * power(2, LEAST(attempts, 8)))
-                            * INTERVAL '1 second'
-                    WHERE id = $1
-                    """,
-                    row["id"],
-                )
+    for row in rows:
+        try:
+            payload = row["payload"]
+            if isinstance(payload, str):
+                payload = json.loads(payload)
+            sent = await _send(db, row["kind"], payload)
+        except Exception:
+            sent = False
+            logger.exception(
+                "Email outbox delivery failed", extra={"email_id": str(row["id"])}
+            )
+        if sent:
+            result = await db.execute(
+                "UPDATE email_outbox SET sent_at = NOW(), payload = '{}'::jsonb, "
+                "claim_token = NULL, claimed_at = NULL "
+                "WHERE id = $1 AND claim_token = $2",
+                row["id"],
+                claim_token,
+            )
+            processed += result == "UPDATE 1"
+        else:
+            await db.execute(
+                """
+                UPDATE email_outbox SET attempts = attempts + 1,
+                    next_attempt_at = NOW() +
+                        LEAST(3600, 10 * power(2, LEAST(attempts, 8)))
+                        * INTERVAL '1 second',
+                    claim_token = NULL, claimed_at = NULL
+                WHERE id = $1 AND claim_token = $2
+                """,
+                row["id"],
+                claim_token,
+            )
     return processed
 
 
@@ -120,7 +133,7 @@ async def maintenance_worker(pool: asyncpg.Pool) -> None:
 
     while True:
         try:
-            async with pool.acquire() as db:
+            async with pool.acquire(timeout=settings.database_acquire_timeout) as db:
                 await expire_pending_orders(db)
                 await process_email_outbox(db)
                 await db.execute(

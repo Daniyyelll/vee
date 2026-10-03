@@ -11,12 +11,15 @@ sets a 14-day `vee-refresh` cookie. The cookie is HttpOnly, scoped to
 `/api/auth`, and contains an opaque random token. PostgreSQL stores only its
 SHA-256 hash. The frontend keeps the access token in memory and calls
 `POST /api/auth/refresh` with the cookie on reload or when the access token
-expires. Each refresh atomically replaces the cookie token and returns a new
-access token. `POST /api/auth/logout` deletes that refresh session and clears
+expires. Each refresh creates a one-time successor in the same token family
+and returns a new access token. Reuse of an older token revokes the entire
+family and increments the account token version. The frontend must serialize
+refresh calls in one tab to avoid treating concurrent refreshes as theft.
+`POST /api/auth/logout` revokes that refresh family and clears
 the cookie. A password change or reset invalidates all existing access and
 refresh tokens through `token_version`.
 
-Apply migration `d4a7f6c20e91` before deploying these endpoints. In production,
+Apply all migrations before deploying these endpoints. In production,
 serve the API over HTTPS. `REFRESH_COOKIE_SECURE` defaults to true except for
 loopback development; `REFRESH_COOKIE_SAMESITE` defaults to `lax`. If the
 storefront and API are on different sites, set `REFRESH_COOKIE_SAMESITE=none`
@@ -44,8 +47,9 @@ routes require `Authorization: Bearer <access-token>`. List routes default to
 | GET | `/api/orders/receipt/{order_number}` | Public with a `Receipt-Token` header; limited confirmation details for 30 days |
 | POST | `/api/coupons` | Admin; create a written or generated coupon |
 | GET | `/api/coupons` | Admin; list coupons |
-| GET | `/api/orders` | Customers see their own orders; admin/delivery see all |
-| GET | `/api/orders/{order_number}` | Same ownership rule as the list |
+| GET | `/api/orders` | Customers see owned orders; delivery sees assigned orders; admins see all |
+| GET | `/api/orders/{order_number}` | Same ownership and assignment rule as the list |
+| PATCH | `/api/orders/{order_number}/delivery-assignment` | Admin assigns or unassigns one active delivery account |
 | PATCH | `/api/orders/{order_number}/status` | Status transitions governed by role |
 | GET | `/api/reviews?productId={uuid}` | Public, paginated product reviews |
 | POST | `/api/reviews` | Delivered purchase required; one review per user/product |
@@ -154,9 +158,9 @@ Order status requests accept:
 
 Admin transitions are `pending -> processing -> shipped -> delivered`;
 `pending` and `processing` may also transition to `cancelled`. Customers may
-cancel only their own pending orders. Delivery staff may advance processing
-orders to shipped, then shipped orders to delivered after cash is recorded as
-collected. Completed and cancelled
+cancel only their own pending orders. Delivery staff may advance only their
+assigned processing orders to shipped, then assigned shipped orders to delivered
+after cash is recorded as collected. Completed and cancelled
 orders are terminal. Repeating the current status is idempotent within these
 role permissions. Invalid transitions return 409; forbidden actions return 403.
 Cancellation restores reserved stock exactly once and cancels pending payments.
@@ -213,7 +217,12 @@ order values, not collected payments or net revenue after refunds. The catalog
 currently has no currency field; analytics assume a single catalog currency.
 
 Public registration creates customer accounts only. Administrator and delivery
-accounts must be provisioned through a trusted administrative process.
+accounts must be provisioned through a trusted administrative process. Before
+their first login, staff submit credentials to `POST /api/auth/staff-mfa/enroll`,
+add the returned `otpauth` URI to an authenticator, and submit the six-digit code
+and enrollment token to `POST /api/auth/staff-mfa/verify`. Subsequent login
+requests include `mfaCode`. Enrollment secrets are returned only during that
+short-lived password-authenticated flow and are encrypted in PostgreSQL.
 
 ## Cash-on-delivery payments
 
@@ -225,9 +234,9 @@ responses include a `payment` resource; older orders without a payment return
 
 | Method | Endpoint | Access and behavior |
 | --- | --- | --- |
-| GET | `/api/payments/{order_number}` | Order owner, admin, or delivery staff |
-| POST | `/api/payments/{order_number}` | Admin/delivery; initialize a legacy cash payment |
-| POST | `/api/payments/{order_number}/collect` | Admin/delivery; record full cash collection |
+| GET | `/api/payments/{order_number}` | Order owner, admin, or assigned delivery staff |
+| POST | `/api/payments/{order_number}` | Admin/assigned delivery; initialize a legacy cash payment |
+| POST | `/api/payments/{order_number}/collect` | Admin/assigned delivery; record full cash collection |
 | POST | `/api/payments/{order_number}/refund` | Admin; record a full cash refund |
 
 These paths use the order number, not the payment UUID. Initialization and
@@ -335,11 +344,20 @@ in `email_outbox`, SMTP delivery failures, and the number of stale pending
 orders. Request logs include an `X-Request-ID` response header. Do not log
 reset links, request bodies, JWTs, or SMTP credentials.
 
+Set `ENVIRONMENT=production`. Startup then fails unless frontend/backend URLs
+use HTTPS, secure refresh cookies are enabled, `DATABASE_SSLMODE` requires TLS,
+and independent `CHECKOUT_HMAC_KEY` and `MFA_ENCRYPTION_KEY` values are present.
 Set a long, random `CHECKOUT_HMAC_KEY` independently of `SECRET_JWT_KEY`
 so rotating JWT credentials does not invalidate guest checkout retry keys or
 active receipt tokens. Rotating the checkout key invalidates existing receipt
 tokens, so plan that rotation around the 30-day receipt window.
-Keep both values out of version control.
+Keep all three values out of version control. Set database connect, command,
+statement, and pool-acquisition timeouts for the deployment. API documentation
+is disabled in production, request bodies default to a 6 MiB ceiling, public
+catalog reads are rate limited, and list offsets are capped. Enforce a tighter
+body limit and connection/request timeouts at the reverse proxy too. Configure
+the proxy to replace forwarded headers and allow Uvicorn to trust forwarded
+headers only from that proxy's IP range.
 
 Use a persistent, backed-up volume for PostgreSQL. The Docker Compose file is
 local development infrastructure and pins PostgreSQL 18.4; changing a running
@@ -349,7 +367,10 @@ mount that directory on persistent shared storage and serve it consistently
 across application replicas, or replace local storage with an object-store
 adapter before adding replicas. Include image storage and the database in
 backup and restore drills. Use TLS at the reverse proxy and restrict database
-and SMTP access to the app network.
+and SMTP access to the app network. Run multiple Uvicorn worker processes under
+the platform's process manager; `main.py` enables reload only in development.
+Retain and monitor the append-only `audit_event` table for staff, order,
+payment, moderation, and catalog changes according to the audit policy.
 
 Run CI lint, a real Alembic upgrade, and the complete test suite before
 deployment. Deploy the migration before starting new app processes. Confirm

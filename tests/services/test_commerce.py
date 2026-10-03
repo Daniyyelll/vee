@@ -32,6 +32,7 @@ from app.services.category import (
 )
 from app.services.coupon import create_coupon, list_coupons
 from app.services.order import (
+    assign_order_delivery,
     checkout,
     expire_pending_orders,
     get_order,
@@ -68,20 +69,40 @@ def database_url():
     return value
 
 
-def migration_statements():
-    modules = {}
+def migration_modules():
+    pending = {}
     for path in Path("migrations/versions").glob("*.py"):
         spec = importlib.util.spec_from_file_location(path.stem, path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        modules[module.down_revision] = module
+        pending[module.revision] = module
+
+    ordered = []
+    applied = set()
+    while pending:
+        ready = []
+        for revision, module in pending.items():
+            dependencies = module.down_revision
+            if dependencies is None:
+                dependencies = ()
+            elif isinstance(dependencies, str):
+                dependencies = (dependencies,)
+            if set(dependencies) <= applied:
+                ready.append((revision, module))
+        if not ready:
+            raise AssertionError("Migration graph has missing dependencies or a cycle")
+        for revision, module in sorted(ready):
+            ordered.append(module)
+            applied.add(revision)
+            del pending[revision]
+    return ordered
+
+
+def migration_statements():
     statements = []
-    revision = None
-    while revision in modules:
-        module = modules[revision]
+    for module in migration_modules():
         module.op = SimpleNamespace(execute=statements.append)
         module.upgrade()
-        revision = module.revision
     return [statement for statement in statements if statement.strip()]
 
 
@@ -92,21 +113,13 @@ def test_populated_catalog_migrates_slugs(database_url):
         try:
             await db.execute(f'CREATE SCHEMA "{schema}"')
             await db.execute(f'SET search_path TO "{schema}"')
-            modules = {}
-            for path in Path("migrations/versions").glob("*.py"):
-                spec = importlib.util.spec_from_file_location(path.stem, path)
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-                modules[module.down_revision] = module
             category_id, product_id, user_id, order_id = (
                 uuid4(),
                 uuid4(),
                 uuid4(),
                 uuid4(),
             )
-            revision = None
-            while revision in modules:
-                module = modules[revision]
+            for module in migration_modules():
                 statements = []
                 module.op = SimpleNamespace(execute=statements.append)
                 module.upgrade()
@@ -117,8 +130,7 @@ def test_populated_catalog_migrates_slugs(database_url):
                         raise AssertionError(
                             f"Migration {module.revision} failed: {statement[:120]!r}"
                         ) from exc
-                revision = module.revision
-                if revision == "f2b8c9d7e4a1":
+                if module.revision == "f2b8c9d7e4a1":
                     await db.execute(
                         "INSERT INTO category (id, category_name) "
                         "VALUES ($1, 'Lip Care')",
@@ -131,7 +143,7 @@ def test_populated_catalog_migrates_slugs(database_url):
                         product_id,
                         category_id,
                     )
-                if revision == "d8c6e3a41b02":
+                if module.revision == "d8c6e3a41b02":
                     await db.execute(
                         'INSERT INTO "user" '
                         "(id, name, email, hashed_password, role, active) "
@@ -596,9 +608,20 @@ def test_checkout_snapshots_ownership_status_and_cancellation(database_url):
             assert fetched.items[0].product_name == "T-shirt"
             assert fetched.items[0].unit_price == Decimal("200.00")
             assert await list_orders(db, other) == []
+            assert await list_orders(db, delivery) == []
             with pytest.raises(APIException) as error:
                 await get_order(db, other, order.order_number)
             assert error.value.status_code == 404
+            with pytest.raises(APIException) as error:
+                await get_order(db, delivery, order.order_number)
+            assert error.value.status_code == 404
+
+            assigned = await assign_order_delivery(
+                db, admin, order.order_number, delivery["id"]
+            )
+            assert assigned.delivery_user_id == delivery["id"]
+            assert (await get_order(db, delivery, order.order_number)).id == order.id
+            assert [value.id for value in await list_orders(db, delivery)] == [order.id]
             with pytest.raises(APIException) as error:
                 await update_order_status(
                     db, customer, order.order_number, OrderStatus.DELIVERED
@@ -712,15 +735,16 @@ def test_empty_cart_and_paid_cancellation(database_url):
 def test_verified_reviews_and_report_moderation(database_url):
     async def scenario():
         async with commerce_database(database_url) as (db, _, users, product_id):
-            customer, other, admin, _ = users
+            customer, other, admin, delivery = users
             request = ReviewCreate(product_id=product_id, rating=5, comment="Great")
             with pytest.raises(APIException) as error:
                 await create_review(db, customer, request)
             assert error.value.status_code == 403
             order = await buy(db, customer, product_id)
+            await assign_order_delivery(db, admin, order.order_number, delivery["id"])
             await deliver(db, admin, order)
             retried = await update_order_status(
-                db, users[3], order.order_number, OrderStatus.DELIVERED
+                db, delivery, order.order_number, OrderStatus.DELIVERED
             )
             assert retried.status == OrderStatus.DELIVERED
             review = await create_review(db, customer, request)

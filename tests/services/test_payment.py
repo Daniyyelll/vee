@@ -16,7 +16,7 @@ from app.domain.enums import OrderStatus, PaymentMethod, PaymentStatus, UserRole
 from app.schemas.order import CheckoutRequest
 from app.schemas.payment import CashRefundRequest
 from app.services import payment as payment_service
-from app.services.order import update_order_status
+from app.services.order import assign_order_delivery, update_order_status
 from app.services.payment import (
     collect_cash,
     create_cash_payment,
@@ -40,6 +40,7 @@ def test_cash_checkout_collection_delivery_and_refund(database_url):
         async with commerce_database(database_url) as (db, _, users, product_id):
             customer, _, admin, delivery = users
             order = await buy(db, customer, product_id)
+            await assign_order_delivery(db, admin, order.order_number, delivery["id"])
             payment = order.payment
             assert payment.amount == Decimal("450.00")
             assert payment.payment_status == PaymentStatus.PENDING
@@ -93,6 +94,13 @@ def test_cash_ownership_permissions_and_invalid_states(database_url):
         async with commerce_database(database_url) as (db, _, users, product_id):
             customer, other, admin, delivery = users
             order = await buy(db, customer, product_id)
+            with pytest.raises(APIException) as error:
+                await get_payment(db, delivery, order.order_number)
+            assert error.value.status_code == 404
+            with pytest.raises(APIException) as error:
+                await collect_cash(db, delivery, order.order_number)
+            assert error.value.status_code == 404
+            await assign_order_delivery(db, admin, order.order_number, delivery["id"])
             assert (
                 await get_payment(db, customer, order.order_number)
             ).id == order.payment.id
@@ -158,6 +166,7 @@ def test_concurrent_collectors_preserve_one_collection_audit(database_url):
         async with commerce_database(database_url) as (db, schema, users, product_id):
             customer, _, admin, delivery = users
             order = await buy(db, customer, product_id)
+            await assign_order_delivery(db, admin, order.order_number, delivery["id"])
             await ship(db, admin, order)
             second = await asyncpg.connect(database_url)
             try:
@@ -269,4 +278,6 @@ def test_refund_restocks_once_inside_payment_transaction(monkeypatch):
     db.executemany.assert_awaited_once()
     assert db.executemany.await_args.args[1] == [(product_id, 2)]
     assert "FOR UPDATE OF p" in db.fetch.await_args.args[0]
-    assert db.execute.await_count == 1
+    assert db.execute.await_count == 2
+    assert "UPDATE payment" in db.execute.await_args_list[0].args[0]
+    assert "INSERT INTO audit_event" in db.execute.await_args_list[1].args[0]

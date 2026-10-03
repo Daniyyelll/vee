@@ -94,6 +94,17 @@ class UpdateOrderStatus(BaseModel):
     status: OrderStatus
 
 
+class AssignOrderDelivery(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        validate_by_name=True,
+        validate_by_alias=True,
+        extra="forbid",
+    )
+
+    delivery_user_id: UUID | None
+
+
 class OrderItemRead(BaseModel):
     id: UUID
     product_id: UUID
@@ -130,6 +141,7 @@ class OrderRead(BaseModel):
     guest_phone: str | None = None
     recipient_name: str | None = None
     recipient_phone: str | None = None
+    delivery_user_id: UUID | None = None
     order_number: int
     total_price: Decimal
     subtotal_price: Decimal | None = None

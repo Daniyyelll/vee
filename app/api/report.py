@@ -15,6 +15,7 @@ from app.schemas.report import (
     SalesReport,
 )
 from app.schemas.response import APIResponse
+from app.services.audit import record_audit
 from app.services.report import (
     create_report,
     get_report,
@@ -50,7 +51,7 @@ async def submit_report(
 async def show_reports(
     report_status: ReportStatus | None = Query(default=None, alias="status"),
     limit: int = Query(default=50, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=10000),
     user: dict[str, Any] = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_connection),
 ) -> APIResponse[list[ReportRead]]:
@@ -75,5 +76,14 @@ async def moderate_report(
     user: dict[str, Any] = Depends(is_admin),
     db: asyncpg.Connection = Depends(get_connection),
 ) -> APIResponse[ReportRead]:
-    report = await update_report(db, user, report_id, request)
+    async with db.transaction():
+        report = await update_report(db, user, report_id, request)
+        await record_audit(
+            db,
+            user,
+            "report.moderated",
+            "report",
+            report_id,
+            details={"status": request.status.value},
+        )
     return APIResponse(status_code=200, message="Report updated", data=report)

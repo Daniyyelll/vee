@@ -1,6 +1,7 @@
 import asyncio
 import importlib.util
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from pathlib import Path
@@ -23,6 +24,12 @@ from app.services.refresh_session import (
 def test_refresh_tokens_are_stored_as_hashes_and_rotated():
     async def scenario():
         db = AsyncMock()
+
+        @asynccontextmanager
+        async def transaction():
+            yield
+
+        db.transaction = transaction
         user_id = uuid4()
         token, expiry = await create_refresh_session(db, user_id, 3)
         insert_args = db.execute.await_args.args
@@ -31,7 +38,12 @@ def test_refresh_tokens_are_stored_as_hashes_and_rotated():
         assert insert_args[4] == 3
         assert expiry > datetime.now(timezone.utc) + timedelta(days=13)
 
+        family_id = uuid4()
         db.fetchrow.return_value = {
+            "session_id": uuid4(),
+            "family_id": family_id,
+            "replaced_by_id": None,
+            "revoked_at": None,
             "id": user_id,
             "name": "Buyer",
             "email": "buyer@example.com",
@@ -40,12 +52,14 @@ def test_refresh_tokens_are_stored_as_hashes_and_rotated():
             "address": None,
             "phone": None,
             "token_version": 3,
+            "session_token_version": 3,
             "expires_at": expiry,
         }
         replacement, _, access, user = await rotate_refresh_session(db, token)
-        update_args = db.fetchrow.await_args.args
-        assert update_args[1] == sha256(token.encode()).hexdigest()
-        assert update_args[2] == sha256(replacement.encode()).hexdigest()
+        select_args = db.fetchrow.await_args.args
+        assert select_args[1] == sha256(token.encode()).hexdigest()
+        persisted = [arg for call in db.execute.await_args_list for arg in call.args]
+        assert sha256(replacement.encode()).hexdigest() in persisted
         assert token != replacement
         assert user["id"] == user_id
         assert decode_access_token(access)["ver"] == 3
@@ -96,6 +110,13 @@ def test_refresh_sql_rotates_once_and_obeys_account_version():
             migration.upgrade()
             for statement in statements:
                 await db.execute(statement)
+            await db.execute("ALTER TABLE refresh_session ADD COLUMN family_id UUID")
+            await db.execute("UPDATE refresh_session SET family_id = id")
+            await db.execute(
+                "ALTER TABLE refresh_session ALTER COLUMN family_id SET NOT NULL, "
+                "ADD COLUMN replaced_by_id UUID REFERENCES refresh_session (id), "
+                "ADD COLUMN revoked_at TIMESTAMPTZ"
+            )
 
             user_id = uuid4()
             await db.execute(
@@ -109,10 +130,18 @@ def test_refresh_sql_rotates_once_and_obeys_account_version():
             replacement, _, _, _ = await rotate_refresh_session(db, token)
             with pytest.raises(APIException):
                 await rotate_refresh_session(db, token)
-            assert (await db.fetchval("SELECT COUNT(*) FROM refresh_session")) == 1
-            await db.execute(
-                'UPDATE "user" SET token_version = token_version + 1 WHERE id = $1',
-                user_id,
+            assert (await db.fetchval("SELECT COUNT(*) FROM refresh_session")) == 2
+            assert (
+                await db.fetchval(
+                    "SELECT COUNT(*) FROM refresh_session WHERE revoked_at IS NOT NULL"
+                )
+                == 2
+            )
+            assert (
+                await db.fetchval(
+                    'SELECT token_version FROM "user" WHERE id = $1', user_id
+                )
+                == 1
             )
             with pytest.raises(APIException):
                 await rotate_refresh_session(db, replacement)
