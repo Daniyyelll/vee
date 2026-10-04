@@ -1,23 +1,20 @@
-import asyncio
 import uuid
 from io import BytesIO
-from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 from fastapi import UploadFile, status
 from PIL import Image, UnidentifiedImageError
 
+from app.core.config import settings
 from app.core.exceptions import APIException
+from app.services.supabase import get_supabase_client
 
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 IMAGE_EXTENSIONS = {"PNG": ".png", "JPEG": ".jpg", "WEBP": ".webp"}
 MAX_IMAGE_PIXELS = 25_000_000
 
 
-def _save_file(file_path: Path, contents: bytes) -> None:
-    file_path.write_bytes(contents)
-
-
-async def upload_file(file: UploadFile, upload_dir: Path) -> str:
+async def upload_file(file: UploadFile) -> str:
     contents = await file.read(MAX_IMAGE_SIZE + 1)
     if len(contents) > MAX_IMAGE_SIZE:
         raise APIException(
@@ -47,13 +44,45 @@ async def upload_file(file: UploadFile, upload_dir: Path) -> str:
             status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
         )
 
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    file_path = upload_dir / f"{uuid.uuid4()}{extension}"
-    await asyncio.to_thread(_save_file, file_path, contents)
-    return f"/uploads/products/{file_path.name}"
+    object_path = f"products/{uuid.uuid4()}{extension}"
+    try:
+        get_supabase_client().storage.from_(settings.supabase_product_bucket).upload(
+            object_path,
+            contents,
+            {
+                "content-type": file.content_type or "application/octet-stream",
+                "cache-control": "31536000",
+                "upsert": "false",
+            },
+        )
+    except Exception as exc:
+        raise APIException(
+            "Image storage is temporarily unavailable.",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        ) from exc
+
+    return (
+        get_supabase_client()
+        .storage.from_(settings.supabase_product_bucket)
+        .get_public_url(object_path)
+    )
 
 
-async def delete_uploaded_file(image_url: str, upload_dir: Path) -> None:
-    filename = Path(image_url).name
-    file_path = upload_dir / filename
-    await asyncio.to_thread(file_path.unlink, missing_ok=True)
+async def delete_uploaded_file(image_url: str) -> None:
+    """Delete a product image from Supabase after a failed database write."""
+    path_prefix = f"/storage/v1/object/public/{settings.supabase_product_bucket}/"
+    path = unquote(urlsplit(image_url).path)
+    if not path.startswith(path_prefix):
+        return
+
+    object_path = path[len(path_prefix) :]
+    if not object_path:
+        return
+
+    try:
+        get_supabase_client().storage.from_(settings.supabase_product_bucket).remove(
+            [object_path]
+        )
+    except Exception:
+        # Cleanup must not hide the original database error.
+        return

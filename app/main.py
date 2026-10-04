@@ -7,7 +7,6 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse
@@ -25,8 +24,6 @@ from app.services.rate_limit import consume_rate_limit
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Connecting to database")
-
-    settings.product_upload_dir.mkdir(parents=True, exist_ok=True)
 
     await connect_database()
     pool = get_pool()
@@ -56,12 +53,6 @@ app = FastAPI(
     openapi_url=None if production else "/openapi.json",
 )
 logger = logging.getLogger("uvicorn.error")
-app.mount(
-    "/uploads/products",
-    StaticFiles(directory=settings.product_upload_dir, check_dir=False),
-    name="product-images",
-)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.FRONTEND_URL.rstrip("/")],

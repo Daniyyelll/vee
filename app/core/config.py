@@ -1,5 +1,4 @@
 from decimal import Decimal
-from pathlib import Path
 from typing import Literal
 from urllib.parse import quote, urlencode, urlsplit
 
@@ -13,8 +12,12 @@ class Settings(BaseSettings):
     # -- Core Settings --
     project_name: str = "Vee E-Commerce"
     environment: Literal["development", "test", "production"] = "development"
-    product_upload_dir: Path = Path(__file__).resolve().parents[2] / "uploads/products"
     max_request_body_bytes: int = Field(default=6 * 1024 * 1024, ge=1024)
+
+    # -- Supabase Storage --
+    supabase_url: str
+    supabase_service_role_key: str
+    supabase_product_bucket: str = "product-images"
 
     # URL
     BACKEND_URL: str

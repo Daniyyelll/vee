@@ -32,9 +32,7 @@ async def get_product_id_by_slug(db: asyncpg.Connection, product_slug: str) -> U
 async def create_product(
     db: asyncpg.Connection, product: ProductCreate, image_file: UploadFile
 ):
-    upload_dir = settings.product_upload_dir
-
-    image_path = await upload_file(image_file, upload_dir)
+    image_path = await upload_file(image_file)
 
     try:
         row = await db.fetchrow(
@@ -61,18 +59,18 @@ async def create_product(
         )
 
     except asyncpg.ForeignKeyViolationError as exc:
-        await delete_uploaded_file(image_path, upload_dir)
+        await delete_uploaded_file(image_path)
         raise APIException(
             "The selected category does not exist.",
             status.HTTP_422_UNPROCESSABLE_ENTITY,
         ) from exc
     except asyncpg.UniqueViolationError as exc:
-        await delete_uploaded_file(image_path, upload_dir)
+        await delete_uploaded_file(image_path)
         raise APIException(
             "A product with this name already exists.", status.HTTP_409_CONFLICT
         ) from exc
     except Exception:
-        await delete_uploaded_file(image_path, upload_dir)
+        await delete_uploaded_file(image_path)
         raise
 
     return dict(row)
