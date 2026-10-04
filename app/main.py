@@ -74,6 +74,12 @@ app.add_middleware(
 )
 backend_host = urlsplit(settings.BACKEND_URL).hostname
 allowed_hosts = [backend_host] if backend_host else []
+vercel_url = settings.vercel_url or ""
+vercel_host = urlsplit(
+    vercel_url if "://" in vercel_url else f"//{vercel_url}"
+).hostname
+if vercel_host and vercel_host not in allowed_hosts:
+    allowed_hosts.append(vercel_host)
 if not production:
     allowed_hosts.extend(["localhost", "127.0.0.1", "testserver"])
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)

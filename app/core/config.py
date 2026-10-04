@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # URL
     BACKEND_URL: str
     FRONTEND_URL: str
+    vercel_url: str | None = None
 
     # -- Database --
     postgres_host: str
