@@ -14,7 +14,6 @@ dependencies = [
     "greenlet>=3.5.5",
     "jinja2>=3.1.6",
     "pillow>=11.1.0",
-    "psycopg2>=2.9.13",
     "pwdlib[argon2]>=0.3.1",
     "pydantic-settings>=2.15.0",
     "pyjwt>=2.15.0",
