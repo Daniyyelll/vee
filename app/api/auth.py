@@ -11,25 +11,15 @@ from app.schemas.response import APIResponse
 from app.schemas.user import (
     ForgotPasswordRequest,
     ResetPasswordRequest,
-    StaffMFAEnrollment,
-    StaffMFAEnrollRequest,
-    StaffMFAVerifyRequest,
     TokenData,
     UserCreate,
     UserLogin,
     UserRead,
 )
-from app.services.audit import record_audit
-from app.services.rate_limit import consume_rate_limit
 from app.services.refresh_session import (
     create_refresh_session,
     revoke_refresh_session,
     rotate_refresh_session,
-)
-from app.services.staff_auth import (
-    begin_staff_mfa_enrollment,
-    verify_staff_login_mfa,
-    verify_staff_mfa_enrollment,
 )
 from app.services.user import (
     limit_login_attempt,
@@ -107,7 +97,6 @@ async def login(
     await limit_login_attempt(db, login_data)
     async with db.transaction():
         token_info = await login_user(db, login_data)
-        await verify_staff_login_mfa(db, login_data, token_info.user)
         version = await db.fetchval(
             'SELECT token_version FROM "user" WHERE id = $1', token_info.user.id
         )
@@ -118,58 +107,6 @@ async def login(
 
     return APIResponse(
         message="User Logged In Successfully",
-        status_code=status.HTTP_200_OK,
-        data=token_info,
-    )
-
-
-@router.post("/staff-mfa/enroll", status_code=status.HTTP_200_OK)
-async def enroll_staff_mfa(
-    body: StaffMFAEnrollRequest,
-    request: Request,
-    db: asyncpg.Connection = Depends(get_connection),
-) -> APIResponse[StaffMFAEnrollment]:
-    _check_origin(request)
-    await consume_rate_limit(
-        db, "staff-mfa-enroll", str(body.email), limit=5, window_seconds=900
-    )
-    async with db.transaction():
-        enrollment = await begin_staff_mfa_enrollment(
-            db, str(body.email), body.password
-        )
-    return APIResponse(
-        message="Verify the authenticator code to finish enrollment.",
-        status_code=status.HTTP_200_OK,
-        data=enrollment,
-    )
-
-
-@router.post("/staff-mfa/verify", status_code=status.HTTP_200_OK)
-async def verify_staff_mfa(
-    body: StaffMFAVerifyRequest,
-    request: Request,
-    response: Response,
-    db: asyncpg.Connection = Depends(get_connection),
-) -> APIResponse[TokenData]:
-    _check_origin(request)
-    async with db.transaction():
-        token_info = await verify_staff_mfa_enrollment(db, body)
-        version = await db.fetchval(
-            'SELECT token_version FROM "user" WHERE id = $1', token_info.user.id
-        )
-        refresh_token, expires_at = await create_refresh_session(
-            db, token_info.user.id, version
-        )
-        await record_audit(
-            db,
-            {"id": token_info.user.id},
-            "staff.mfa_enabled",
-            "user",
-            token_info.user.id,
-        )
-    _set_refresh_cookie(response, refresh_token, expires_at)
-    return APIResponse(
-        message="Staff MFA enabled.",
         status_code=status.HTTP_200_OK,
         data=token_info,
     )

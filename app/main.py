@@ -103,8 +103,6 @@ PUBLIC_LIMITS = {
     "/api/auth/register": (10, 3600),
     "/api/auth/forgot-password": (10, 3600),
     "/api/auth/reset-password": (20, 900),
-    "/api/auth/staff-mfa/enroll": (10, 900),
-    "/api/auth/staff-mfa/verify": (20, 900),
     "/api/orders/guest-checkout": (10, 3600),
 }
 

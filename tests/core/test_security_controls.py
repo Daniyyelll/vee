@@ -43,7 +43,6 @@ def test_production_configuration_fails_closed():
         "database_sslmode": "disable",
         "secret_jwt_key": "j" * 32,
         "checkout_hmac_key": None,
-        "mfa_encryption_key": None,
         "refresh_cookie_secure": False,
         "mail_user": "mailer",
         "mail_pass": "mail-password",

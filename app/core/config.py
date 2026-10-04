@@ -44,7 +44,6 @@ class Settings(BaseSettings):
     # -- Security --
     secret_jwt_key: str = Field(min_length=32)
     checkout_hmac_key: str | None = Field(default=None, min_length=32)
-    mfa_encryption_key: str | None = Field(default=None, min_length=32)
     algorithm: Literal["HS256"] = "HS256"
     jwt_issuer: str = "vee-api"
     jwt_audience: str = "vee-web"
@@ -107,8 +106,6 @@ class Settings(BaseSettings):
             )
         if not self.checkout_hmac_key:
             raise ValueError("CHECKOUT_HMAC_KEY is required in production")
-        if not self.mfa_encryption_key:
-            raise ValueError("MFA_ENCRYPTION_KEY is required in production")
         if not self.REFRESH_COOKIE_SECURE:
             raise ValueError("Secure refresh cookies are required in production")
         if self.database_sslmode not in {"require", "verify-ca", "verify-full"}:

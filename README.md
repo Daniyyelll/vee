@@ -217,12 +217,7 @@ order values, not collected payments or net revenue after refunds. The catalog
 currently has no currency field; analytics assume a single catalog currency.
 
 Public registration creates customer accounts only. Administrator and delivery
-accounts must be provisioned through a trusted administrative process. Before
-their first login, staff submit credentials to `POST /api/auth/staff-mfa/enroll`,
-add the returned `otpauth` URI to an authenticator, and submit the six-digit code
-and enrollment token to `POST /api/auth/staff-mfa/verify`. Subsequent login
-requests include `mfaCode`. Enrollment secrets are returned only during that
-short-lived password-authenticated flow and are encrypted in PostgreSQL.
+accounts must be provisioned through a trusted administrative process.
 
 ## Cash-on-delivery payments
 
@@ -346,7 +341,7 @@ reset links, request bodies, JWTs, or SMTP credentials.
 
 Set `ENVIRONMENT=production`. Startup then fails unless frontend/backend URLs
 use HTTPS, secure refresh cookies are enabled, `DATABASE_SSLMODE` requires TLS,
-and independent `CHECKOUT_HMAC_KEY` and `MFA_ENCRYPTION_KEY` values are present.
+and an independent `CHECKOUT_HMAC_KEY` is present.
 Set a long, random `CHECKOUT_HMAC_KEY` independently of `SECRET_JWT_KEY`
 so rotating JWT credentials does not invalidate guest checkout retry keys or
 active receipt tokens. Rotating the checkout key invalidates existing receipt

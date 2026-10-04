@@ -5,37 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e36c8ac7-5fff-4da6-b164-f21cab3b6ffc" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.github/workflows/ci.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/ci.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/category.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/category.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/coupon.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/coupon.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/order.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/order.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/product.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/product.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/report.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/report.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/review.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/review.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/security.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/security.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/db/session.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/db/session.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/schemas/order.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/order.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/schemas/user.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/schemas/user.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/order.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/order.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/outbox.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/outbox.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/payment.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/payment.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/product.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/product.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/refresh_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/refresh_session.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/migrations/versions/95d8e6f1a911_merge_heads.py" beforeDir="false" afterPath="$PROJECT_DIR$/migrations/versions/95d8e6f1a911_merge_heads.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/api/test_commerce.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/api/test_commerce.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/services/test_commerce.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/services/test_commerce.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/services/test_order_history.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/services/test_order_history.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/services/test_payment.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/services/test_payment.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/services/test_refresh_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/services/test_refresh_session.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/uv.lock" beforeDir="false" afterPath="$PROJECT_DIR$/uv.lock" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -201,7 +171,7 @@
       <workItem from="1790550573881" duration="15380000" />
       <workItem from="1790639289720" duration="11259000" />
       <workItem from="1790897525182" duration="1227000" />
-      <workItem from="1791067499200" duration="1554000" />
+      <workItem from="1791067499200" duration="2191000" />
     </task>
     <servers />
   </component>
