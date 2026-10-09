@@ -4,6 +4,7 @@ from app.api.auth import router as auth_router
 from app.api.cart import router as cart_router
 from app.api.category import router as category_router
 from app.api.coupon import router as coupon_router
+from app.api.landing_image import router as landing_image_router
 from app.api.order import router as order_router
 from app.api.payment import router as payment_router
 from app.api.product import router as product_router
@@ -37,6 +38,7 @@ api_router.include_router(auth_router, tags=["auth"])
 api_router.include_router(user_router, tags=["user"])
 api_router.include_router(category_router, tags=["category"])
 api_router.include_router(product_router, tags=["product"])
+api_router.include_router(landing_image_router)
 api_router.include_router(cart_router)
 api_router.include_router(order_router)
 api_router.include_router(review_router)

@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_service_role_key: str
     supabase_product_bucket: str = "product-images"
+    # Defaults to the existing public bucket.
+    supabase_site_bucket: str = "product-images"
 
     # URL
     BACKEND_URL: str

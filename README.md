@@ -291,6 +291,25 @@ silently deleted or relabelled. The provider reference column is now optional
 and retained only to preserve old references. Downgrading removes cash audit
 columns but keeps payment records and nullable provider references.
 
+## Landing image administration
+
+The admin **Landing images** screen manages the fixed Hero and Ritual slots.
+`GET /api/landing-images` is public. `PATCH /api/landing-images/{slot}`
+requires an administrator and accepts multipart `imageFile` (optional),
+`altText`, `caption`, `focalX`, and `focalY`. Saving publishes immediately
+and records an audit event. The storefront keeps bundled artwork as a fallback
+when the API or an image URL is unavailable.
+
+Uploads must be PNG, JPEG, or WebP, at most 5 MiB and 25 megapixels, with
+both dimensions at least 640 pixels. The backend creates 1024px and 640px
+WebP variants, strips source metadata, and stores them at unique paths.
+The configured Supabase bucket must allow public reads; only the backend
+service role writes. `SUPABASE_SITE_BUCKET` defaults to the existing
+`product-images` bucket and can point to a dedicated public bucket. Deploy
+the database migration before the new API and frontend. Old versioned
+objects remain in storage so pages already open during a publish keep
+working; review their retention as part of storage operations.
+
 ## Database upgrades and validation
 
 Apply migrations before using the new routes:
