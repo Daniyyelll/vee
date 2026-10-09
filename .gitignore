@@ -1,0 +1,32 @@
+# Local configuration and Vercel project linkage
+.env
+.env.*
+!.env.example
+.vercel/
+
+# Python and tooling
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.uv-cache/
+.pip-audit-cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Local editor, database, and backup files
+.idea/
+/postgres_data/
+/backups/
+/db_dumps/
+*.pgdump
+*.dump
+*.backup
+
+# Local agent and personal scripts
+AGENTS.md
+/scripts/
+
+# Keep migrations/versions/*.py in Git: deployments need the same revisions.
